@@ -7,8 +7,9 @@ class Detector:
     #hsv_azul = ((100,197,255),(88,120,180))
     #hsv_verde = ( (69,244,255), (42,42,154))
     
-    hsv_verde = ((49,42,130),(102,255,255))    
-    hsv_azul = ((111,79,130),(149,208,255))
+    hsv_verde = ((49,100,130),(102,255,255))    
+    hsv_azul  = ((111,79,130),(149,208,255))
+    hsv_rojo  = ((162,153,61),(193,255,178))
     paint_result = False
     
     object = np.array([[0,0,0],[5,0,0],[0,7,0],[5,7,0]], dtype=np.float64)
@@ -24,6 +25,7 @@ class Detector:
     modo = "normal"
     
     def __init__(self):
+        self.Inv_Cam_Matrix = np.linalg.inv(self.Cam_Matrix)
         pass
        
     def setMode(self, modo):
@@ -36,38 +38,82 @@ class Detector:
         elif self.modo == "test":
             self.Tester(img)
             
-    # Detect the items in the img
+            
+    def calculate_XYZ(self,u,v, rvec, tvec):
+        """
+        scalingfactor = 1                    
+        #Solve: From Image Pixels, find World Points
+        uv_1=np.array([[u,v,1]], dtype=np.float32)
+        uv_1=uv_1.T
+        suv_1=scalingfactor*uv_1
+        xyz_c=self.Inv_Cam_Matrix.dot(suv_1)
+        xyz_c=xyz_c-tvec
+        R_mat,_ = cv2.Rodrigues(rvec)
+        Inv_R_mat = np.linalg.inv(R_mat)
+        XYZ=Inv_R_mat.dot(xyz_c)
+        """
+        
+        uv_1=np.array([[u,v,1]], dtype=np.float32).T
+        R_mat,_ = cv2.Rodrigues(rvec)
+        Inv_R_mat = np.linalg.inv(R_mat)
+        leftSide = Inv_R_mat.dot(self.Inv_Cam_Matrix.dot(uv_1))
+        rightSide = Inv_R_mat.dot(tvec)
+        s = 0 + rightSide[2][0]/leftSide[2][0]
+        #s = 1
+        XYZ = Inv_R_mat.dot( s * self.Inv_Cam_Matrix.dot(uv_1) - tvec)
+        """
+        print("uv: " + str(uv_1))
+        print("Inv_cam: " + str(self.Inv_Cam_Matrix))
+        print("R_mat: " + str(R_mat))
+        print("Inv_R_mat " + str(Inv_R_mat))
+        print("left " + str(leftSide))
+        print("right " + str(rightSide))
+        """
+        return XYZ            
+        
+        
+        # Detect the items in the img
     def Detect(self, img):
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
         mask_azul = cv2.inRange(img_hsv, self.hsv_azul[0], self.hsv_azul[1])
         mask_verde = cv2.inRange(img_hsv, self.hsv_verde[0], self.hsv_verde[1])
+        mask_rojo = cv2.inRange(img_hsv, self.hsv_rojo[0], self.hsv_rojo[1])
+        
         mask_azul  = self.FilterMask(mask_azul)
         mask_verde = self.FilterMask(mask_verde)
+        mask_rojo  = self.FilterMask(mask_rojo)
+        
         azul_ellipses = self.getEllipse(mask_azul)
         verde_ellipses = self.getEllipse(mask_verde)
+        rojo_ellipses = self.getEllipse(mask_rojo)
         
         centros = []
         centros_a = []
         centros_v = []
-        for (cAzul, eAzul) in azul_ellipses:
-            centros.append([cAzul[0], cAzul[1]])
-            centros_a.append(cAzul)
-            if not cAzul == -1:
-                cv2.ellipse(img, eAzul, (255,0,0), 2)
-                cv2.circle(img, cAzul, 5, (0, 0, 255), -1)
+        if len(azul_ellipses) > 0:
+            for (cAzul, eAzul) in azul_ellipses:
+                if not cAzul == None:
+                    centros.append([cAzul[0], cAzul[1]])
+                    centros_a.append(cAzul)
+                    if not cAzul == -1:
+                        cv2.ellipse(img, eAzul, (255,0,0), 2)
+                        cv2.circle(img, cAzul, 5, (0, 0, 255), -1)
 
-        for (cVerde, eVerde) in verde_ellipses:
-            centros.append([cVerde[0], cVerde[1]])
-            centros_v.append(cVerde)
-            if not cVerde == -1:
-                cv2.ellipse(img, eVerde, (0,255,0), 2)
-                cv2.circle(img, cVerde, 5, (0, 0, 255), -1)
+        if len(verde_ellipses) > 0:
+            for (cVerde, eVerde) in verde_ellipses:
+                if not cVerde == None:
+                    centros.append([cVerde[0], cVerde[1]])
+                    centros_v.append(cVerde)
+                    if not cVerde == -1:
+                        cv2.ellipse(img, eVerde, (0,255,0), 2)
+                        cv2.circle(img, cVerde, 5, (0, 0, 255), -1)
             
-        if self.paint_result:
-            cv2.line(img, cAzul, cVerde, (0,0,255), 2)
-        
-        
-        if len(centros) == 4:
+        objetivo = None
+        if len(rojo_ellipses) == 1:        
+            objetivo = rojo_ellipses[0]
+            cv2.circle(img, objetivo[0], 5, (255, 0, 0), -1)
+       
+        if len(centros) == 4 and len(centros_a) == 2 and len(centros_v) == 2:
             
             centros_ordenados = []
             
@@ -79,9 +125,7 @@ class Detector:
             cv2.line(img, centros_a[0], centros_a[1], (0,255,0),2)
             v = np.array(centros_a[1]) - np.array(centros_a[0])
             centro_linea_a = (centros_a[0] + v/2).astype(int)
-            
-            print(centro_linea_v)
-            print(centro_linea_a)
+
             if centro_linea_v[1] < centro_linea_a[1]:
                 if centros_a[0][0] < centros_a[1][0]:
                     centros_ordenados.append(centros_a[0])
@@ -106,8 +150,12 @@ class Detector:
             ret, rvec, tvec = cv2.solvePnP(self.object,
                          np.array(centros_ordenados, dtype=np.float64),
                          self.Cam_Matrix,
-                         np.array([0, 0, 0, 0, 0]))
-            print(tvec)
+                         self.dist)
+            #print(tvec)
+            #print(rvec)
+            if not objetivo == None:
+                print(objetivo)
+                print(self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec))
         cv2.imshow("Detecciones", img)
     
     # Filter the mask
