@@ -6,7 +6,7 @@ from Detector import Detector
 
 
 webcam = cv2.VideoCapture(0)
-
+webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, True)
 detect = Detector()
 
 while True:
