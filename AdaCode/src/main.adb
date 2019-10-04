@@ -7,7 +7,7 @@ with HAL;
 with Console;
 with rf24;
 with STM32.SPI;
-with STM32_SVD.SPI;
+
 
 procedure Main is
    use type Ada.Real_Time.Time;

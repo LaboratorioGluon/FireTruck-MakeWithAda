@@ -25,15 +25,20 @@ package RF24 is
    end record
      with  Size => 8,
      Bit_Order => System.Low_Order_First;
-   
    for Read_Command use record
-      Register at 0 range 0..4;
-      Fixed    at 0 range 5..7;
+      Register at 0 range 0 .. 4;
+      Fixed at 0 range 5 .. 7;
    end record;
    
-    function FROM_Command is new
-     Unchecked_Conversion(Read_Command ,HAL.UInt8);
-
+   function FROM_Command is new
+     Unchecked_Conversion(Read_Command, HAL.UInt8 );
+   
+   
+--     for Read_Command  use record
+--        Register at 0 range 0..4;
+--        Fixed    at 0 range 5..7;
+--     end record;
+   
    
    type Status_Register is record
       TX_FULL        : Boolean := False;
@@ -55,6 +60,7 @@ package RF24 is
       Reserved_7_7      at 0 range 7 .. 7;
    end record;
    
+   Config_Register_Dir: HAL.UInt8 := 16#0#;
    type Config_Register is record
       PRIM_RX        : Boolean := False;
       PWR_UP         : Boolean := False;
@@ -122,4 +128,9 @@ package RF24 is
                      data: out STM32.SPI.UInt8_Buffer;
                      count: out Integer);
 
+   function writeRegister(Reg: in HAL.UInt8;
+                          Value: in HAL.UInt8) return Status_Register;
+   
+   
+   
 end RF24;
