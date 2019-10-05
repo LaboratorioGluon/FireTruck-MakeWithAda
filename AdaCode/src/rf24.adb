@@ -17,6 +17,15 @@ package body RF24 is
       Config_AF : STM32.GPIO.GPIO_Port_Configuration (Mode => STM32.GPIO.Mode_AF);
       Config_GPIO: STM32.GPIO.GPIO_Port_Configuration( Mode=> STM32.GPIO.Mode_Out);
       
+            
+      send2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      recv2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      status: HAL.SPI.SPI_Status;
+      return_status : Status_Register;
+      
+      ret : HAL.UInt8;
+      
+      
    begin
       MOSI := MOSI_Pin;
       MISO := MISO_Pin;
@@ -57,6 +66,65 @@ package body RF24 is
       -- Configure the SPI
       Configure(This.SPI_Port.all);
       
+      delay 0.1;
+      
+      return_status := writeRegister(RF24.CONFIG, 16#0C#);
+      return_status := writeRegister(RF24.SETUP_RETR, 16#65#);
+      return_status := writeRegister(RF24.RF_SETUP, 2#00100110#);
+      -- Activate
+      
+      Console.putLine(" -------- ACTIVATE -------- ");
+      Console.putLine("Setting ACTIVATE");
+      STM32.Device.PB12.Clear;
+      send2(0) := 16#50#;
+      send2(1) := 16#73#;
+      STM32.Device.SPI_2.Transmit( HAL.SPI.SPI_Data_8b(send2), status);
+      Console.putline("SPI status: " & status'Img);
+      STM32.Device.PB12.Set;
+      
+      Console.putLine(" -------- Feature -------- ");
+      Console.putLine("Setting FEATURE");
+      return_status := writeRegister(FEATURE, 0);
+      Console.putLine("Status :" & FROM_Register(return_status)'Img);
+      
+
+      Console.putLine(" -------- Dynamic pay -------- ");
+      Console.putLine("Setting DYNPay");
+      return_status := writeRegister(DYNPD, 0);
+      
+      return_status := writeRegister(RF24.STATUS, 16#70#);
+      
+      
+      return_status := writeRegister(RF24.RF_CH, 76);
+      
+      STM32.Device.PB12.Clear;
+      Console.putLine(" -------- Channel Data -------- ");
+      Console.putLine("Checking Channel data ");
+      return_status := readRegister(RF24.RF_CH, ret);
+      Console.putLine("Channel Data: " & ret'Img);
+      STM32.Device.PB12.Set;
+      
+      
+      
+      STM32.Device.PB12.Clear;
+      Console.putLine(" -------- FLUSH TX -------- ");
+      Console.putLine("Flushing TX");
+      send2(0) := 2#11100010#;
+      STM32.Device.SPI_2.Transmit( send2(0));
+      Console.putline("SPI status: " & status'Img);
+      STM32.Device.PB12.Set;
+      
+      STM32.Device.PB12.Clear;
+      Console.putLine(" -------- FLUSH RX -------- ");
+      Console.putLine("Flushing RX");
+      send2(0) := 2#11100011#;
+      STM32.Device.SPI_2.Transmit( send2(0));
+      Console.putline("SPI status: " & status'Img);
+      STM32.Device.PB12.Set;
+      delay 0.5;
+      
+      
+      delay 1.0;
         
    end Init;
    
@@ -69,6 +137,8 @@ package body RF24 is
       
       Config : STM32.GPIO.GPIO_Port_Configuration (Mode => STM32.GPIO.Mode_AF);
       Config_CE: STM32.GPIO.GPIO_Port_Configuration( Mode=> STM32.GPIO.Mode_Out);
+      
+
    begin
       
       MOSI := MOSI_Pin;
@@ -108,6 +178,9 @@ package body RF24 is
       -- Configure the SPI
       Configure(SPI.all);
       
+      
+      
+      
    end Init;
    
    
@@ -140,11 +213,11 @@ package body RF24 is
       --read_cmd: Read_Command(Reg => 0);
       
    begin
-      STM32.Device.PB12.Clear;
-      Console.putLine("Pre transmit!");
-      STM32.Device.SPI_2.Transmit(data, status);
-      Console.putLine("Post transmit!");
-      STM32.Device.PB12.Set;
+      status_reg := readRegister(RF24.CONFIG, ret);
+      config_reg := TO_Register(ret);
+      config_reg.PWR_UP := True;
+      status_reg := writeRegister(RF24.CONFIG, FROM_Register(config_reg));
+      delay 1.0;
    end powerUp;
    
    procedure setRxMode(This: in out RF24_Device) is
@@ -173,57 +246,35 @@ package body RF24 is
       recv5 : STM32.SPI.UInt8_Buffer(0 .. 4);
       
       read_cmd : Read_Command;
+      
+      radio_status : Status_Register;
+      
+      
    begin
       
-      -- Activate
-      STM32.Device.PB12.Clear;
-      Console.putLine(" -------- ACTIVATE -------- ");
-      Console.putLine("Setting ACTIVATE");
-      send2(0) := 16#50#;
-      send2(1) := 16#73#;
-      STM32.Device.SPI_2.Transmit( rx_setup_data, status);
-      Console.putline("SPI status: " & status'Img);
-      STM32.Device.PB12.Set;
-      
-      STM32.Device.PB12.Clear;
-      Console.putLine(" -------- Feature -------- ");
-      Console.putLine("Setting FEATURE");
-      send2(0) := 16#3D#;
-      send2(1) := 16#00#;
-      STM32.Device.SPI_2.Transmit( rx_setup_data, status);
-      Console.putline("SPI status: " & status'Img);
-      STM32.Device.PB12.Set;
-      
-      STM32.Device.PB12.Clear;
-      Console.putLine(" -------- Dynamic pay -------- ");
-      Console.putLine("Setting DYNPay");
-      send2(0) := 16#3C#;
-      send2(1) := 16#00#;
-      STM32.Device.SPI_2.Transmit( rx_setup_data, status);
-      Console.putline("SPI status: " & status'Img);
-      STM32.Device.PB12.Set;
-      
-      STM32.Device.PB12.Clear;
-      Console.putLine(" -------- FLUSH TX -------- ");
-      Console.putLine("Flushing TX");
-      send2(0) := 2#11100010#;
-      STM32.Device.SPI_2.Transmit( send2(0));
-      Console.putline("SPI status: " & status'Img);
-      STM32.Device.PB12.Set;
-      
-            STM32.Device.PB12.Clear;
-      Console.putLine(" -------- FLUSH RX -------- ");
-      Console.putLine("Flushing RX");
-      send2(0) := 2#11100011#;
-      STM32.Device.SPI_2.Transmit( send2(0));
-      Console.putline("SPI status: " & status'Img);
-      STM32.Device.PB12.Set;
       
       
+--        
+--        radio_status := readRegister(RF24.STATUS, ret);
+--        Console.putLine("Status leido: " & ret'Img);
+      
+      radio_status := readRegister(CONFIG, ret);
+      Console.putLine("Config leido: " & ret'Img);
+      
+      config_reg := TO_Register(ret);
+      config_reg.PWR_UP := True;
+      config_reg.PRIM_RX := False;
+      radio_status := writeRegister(CONFIG, FROM_Register(config_reg));
+      radio_status := readRegister(CONFIG, ret);
+      Console.putLine("Config leido: " & ret'Img);
+      delay 10.0;
       -- RX Setup and check
-      STM32.Device.PB12.Clear;
       Console.putLine(" -------- RX -------- ");
       Console.putLine("Setting RX("& rx_setup_data(0)'Img & ") to " & rx_setup_data(1)'Img);
+      
+      
+      STM32.Device.PB12.Clear;
+
       STM32.Device.SPI_2.Transmit( rx_setup_data, status);
       Console.putline("SPI status: " & status'Img);
       STM32.Device.PB12.Set;
@@ -316,27 +367,7 @@ package body RF24 is
       Console.putLine("Status: " & recv2(0)'Img);
       Console.putLine("Size: " & recv2(1)'Img);
       STM32.Device.PB12.Set;
-      
-      delay 1.0;
-      delay 0.1;
-      STM32.Device.PB12.Clear;
-      STM32.Device.SPI_2.Transmit(channel_data, status);
-      STM32.Device.PB12.Set;
-      
-      STM32.Device.PB12.Clear;
-      read_cmd.Register := 16#05#;
-      
-      Console.putLine(" -------- Channel Data -------- ");
-      Console.putLine("Checking Channel data " & FROM_Command(read_cmd)'Img);
-      send2(0) := 16#05#;
-      send2(1) := 16#FF#;
-      STM32.Device.SPI_2.Transmit_Receive(send2,
-                                          recv2,
-                                          Positive(2));
-      Console.putLine("Status: " & recv2(0)'Img);
-      Console.putLine("Channel Data: " & recv2(1)'Img);
-      STM32.Device.PB12.Set;
-      
+
       delay 0.1;
       STM32.Device.PB12.Clear;
       Console.putLine("Setting RX mode!");
@@ -515,28 +546,85 @@ package body RF24 is
       
    end getData;
    
-   function writeRegister(Reg: in HAL.UInt8;
+   function writeRegister(Reg: in HAL.UInt5;
                           Value: in HAL.UInt8) return Status_Register is
       
-      use type HAL.SPI.SPI_Status;
       
       send2 : STM32.SPI.UInt8_Buffer(0 .. 1);
       recv2 : STM32.SPI.UInt8_Buffer(0 .. 1);
       
-      cmd: Read_Command(Reg);
-      status: HAL.SPI.SPI_Status;
+      cmd: Write_Command;
+      --status: HAL.SPI.SPI_Status;
+      ret_status : Status_Register;
    begin
-      
+      cmd.Register := Reg;
       STM32.Device.PB12.Clear;
       send2(0) := FROM_Command(cmd);
-      send2(1) := 16#00#;
-      STM32.Device.SPI_2.Transmit( send2, status);
+      send2(1) := Value;
+      STM32.Device.SPI_2.Transmit_Receive( send2,
+                                           recv2,
+                                           Positive(2));
       STM32.Device.PB12.Set;
       
-      if status /= HAL.SPI.Ok then
-         Console.putLine("[ERROR] WriteRegister " & Reg'Img);
-      end if;
-      
+      ret_status := TO_Register(recv2(0));
+
+        
+--        if status /= HAL.SPI.Ok then
+--           Console.putLine("[ERROR] WriteRegister " & Reg'Img);
+--        end if;
+      return ret_status;
    end writeRegister;
+   
+   function readRegister(Reg: in HAL.UInt5;
+                         status_reg: out Status_Register) return Status_Register is
+      send2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      recv2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      
+      cmd : Read_Command;
+      
+      ret_status : Status_Register;
+   begin
+      cmd.Register := Reg;
+      
+      STM32.Device.PB12.Clear;      
+      send2(0) := FROM_Command(cmd);
+      send2(1) := 16#FF#;
+      STM32.Device.SPI_2.Transmit_Receive(send2,
+                                          recv2,
+                                          Positive(2));
+      STM32.Device.PB12.Set;
+      
+      ret_status := TO_Register(recv2(0));
+      status_reg := TO_Register(recv2(1));
+      
+      return ret_status;
+   end readRegister;
+   
+   
+   function readRegister(Reg: in HAL.UInt5;
+                         data: out HAL.Uint8) return Status_Register is
+            
+      send2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      recv2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      
+      cmd : Read_Command;
+      
+      ret_status : Status_Register;
+   begin
+      cmd.Register := Reg;
+      
+      STM32.Device.PB12.Clear;      
+      send2(0) := FROM_Command(cmd);
+      send2(1) := 16#FF#;
+      STM32.Device.SPI_2.Transmit_Receive(send2,
+                                          recv2,
+                                          Positive(2));
+      STM32.Device.PB12.Set;
+      
+      ret_status := TO_Register(recv2(0));
+      data := recv2(1);
+      
+      return ret_status;
+   end readRegister;
    
 end RF24;

@@ -30,8 +30,21 @@ package RF24 is
       Fixed at 0 range 5 .. 7;
    end record;
    
+   type Write_Command is record
+      Register: HAL.UInt5 := 0;
+      Fixed: HAL.UInt3 := 2#001#;
+   end record
+     with  Size => 8,
+     Bit_Order => System.Low_Order_First;
+   for Write_Command use record
+      Register at 0 range 0 .. 4;
+      Fixed at 0 range 5 .. 7;
+   end record;
+   
    function FROM_Command is new
      Unchecked_Conversion(Read_Command, HAL.UInt8 );
+   function FROM_Command is new
+     Unchecked_Conversion(Write_Command, HAL.UInt8 );
    
    
 --     for Read_Command  use record
@@ -93,6 +106,8 @@ package RF24 is
    
    function FROM_Register is new
      Unchecked_Conversion(Config_Register, HAL.UInt8 );
+   function FROM_Register is new
+     Unchecked_Conversion(Status_Register, HAL.UInt8 );
    
    type RF24_Device( SPI_Port : access STM32.SPI.SPI_Port) is 
      tagged limited record
@@ -128,9 +143,45 @@ package RF24 is
                      data: out STM32.SPI.UInt8_Buffer;
                      count: out Integer);
 
-   function writeRegister(Reg: in HAL.UInt8;
+   function writeRegister(Reg: in HAL.UInt5;
                           Value: in HAL.UInt8) return Status_Register;
    
+   function readRegister(Reg: in HAL.UInt5;
+                         status_reg: out Status_Register) return Status_Register;
    
+   function readRegister(Reg: in HAL.UInt5;
+                         data: out HAL.Uint8) return Status_Register;
+   
+   
+   
+   
+   
+   
+   CONFIG : HAL.Uint5 := 16#00#;
+   EN_AA : HAL.Uint5 := 16#01#;
+   EN_RXADDR : HAL.Uint5 := 16#02#;
+   SETUP_AW : HAL.Uint5 := 16#03#;
+   SETUP_RETR : HAL.Uint5 := 16#04#;
+   RF_CH : HAL.Uint5 := 16#05#;
+   RF_SETUP : HAL.Uint5 := 16#06#;
+   STATUS : HAL.Uint5 := 16#07#;
+   OBSERVE_TX : HAL.Uint5 := 16#08#;
+   CD : HAL.Uint5 := 16#09#;
+   RX_ADDR_P0 :  HAL.Uint5 := 16#0A#;
+   RX_ADDR_P1 :  HAL.Uint5 := 16#0B#;
+   RX_ADDR_P2 :  HAL.Uint5 := 16#0C#;
+   RX_ADDR_P3 :  HAL.Uint5 := 16#0D#;
+   RX_ADDR_P4 :  HAL.Uint5 := 16#0E#;
+   RX_ADDR_P5 :  HAL.Uint5 := 16#0F#;
+   TX_ADDR: HAL.Uint5 := 16#10#;
+   RX_PW_P0: HAL.Uint5 := 16#11#;
+   RX_PW_P1: HAL.Uint5 := 16#12#;
+   RX_PW_P2: HAL.Uint5 := 16#13#;
+   RX_PW_P3: HAL.Uint5 := 16#14#;
+   RX_PW_P4: HAL.Uint5 := 16#15#;
+   RX_PW_P5: HAL.Uint5 := 16#16#;
+   FIFO_STATUS: HAL.Uint5 := 16#17#;
+   DYNPD : Hal.Uint5 := 16#1C#;   
+   FEATURE : HAL.Uint5 := 16#1D#;
    
 end RF24;
