@@ -3,7 +3,6 @@ with HAL.SPI;
 with STM32.Device;
 with Console;
 
-with STM32_SVD.SPI;
 
 package body RF24 is
 
@@ -172,7 +171,7 @@ package body RF24 is
       
       channel_data : constant HAL.SPI.SPI_Data_8b(0..1) := (16#25#,76);
       
-      setup_aw : HAL.SPI.SPI_Data_8b(0..1) := (16#23#,16#03#);
+      setup_aw : constant HAL.SPI.SPI_Data_8b(0..1) := (16#23#,16#03#);
       rx_setup_data: HAL.SPI.SPI_Data_8b(0..1) := (16#26#,2#00100110#);
       status: HAL.SPI.SPI_Status;
       config_reg: Config_Register;
@@ -185,19 +184,10 @@ package body RF24 is
       send5 : STM32.SPI.UInt8_Buffer(0 .. 4);
       recv5 : STM32.SPI.UInt8_Buffer(0 .. 4);
       
-      read_cmd : Read_Command;
-      
-      radio_status : Status_Register;
-      
+      read_cmd : Read_Command;      
       
    begin
-      
-      
-      
---        
---        radio_status := readRegister(RF24.STATUS, ret);
---        Console.putLine("Status leido: " & ret'Img);
-      
+            
       ret := This.readRegister(CONFIG);
       Console.putLine("Config leido: " & ret'Img);
       
@@ -207,7 +197,7 @@ package body RF24 is
       This.writeRegister(CONFIG, FROM_Register(config_reg));
       ret := This.readRegister(CONFIG);
       Console.putLine("Config leido: " & ret'Img);
-      delay 10.0;
+      delay 0.1;
       -- RX Setup and check
       Console.putLine(" -------- RX -------- ");
       Console.putLine("Setting RX("& rx_setup_data(0)'Img & ") to " & rx_setup_data(1)'Img);
@@ -317,7 +307,7 @@ package body RF24 is
       This.SPI_Port.all.Transmit(data, status);
       This.NSS.Set;
       
-      delay 1.0;
+      delay 0.2;
       
       
       This.CE.set;
@@ -326,85 +316,80 @@ package body RF24 is
      
    
    function ReadWaitBlocking(This: in out RF24_Device) return HAL.UInt8 is
-      ret: HAL.UInt8;
       
       read_payload_cmd : constant STM32.SPI.UInt8_Buffer(0 .. 31) := (0 => HAL.UInt8(97), 
-                                                            others => HAL.UInt8(16#FF#));
-      received_data : STM32.SPI.UInt8_Buffer(0 .. 31) := ( others => HAL.UInt8(0));
+                                                                      others => HAL.UInt8(16#FF#));
       
-      send2 : STM32.SPI.UInt8_Buffer(0 .. 1);
-      recv2 : STM32.SPI.UInt8_Buffer(0 .. 1);
+      status_reg : FIFO_Status_Register;
+      
    begin
+      
+      This.readBuffer := (others => 0);                           
+      
+      
+      status_reg := TO_Register(This.readRegister(RF24.FIFO_STATUS));
+         
+      while status_reg.RX_EMPTY loop
+         status_reg := TO_Register(This.readRegister(RF24.FIFO_STATUS));
+         delay 0.2;
+      end loop;
+
+        
+      
+      
       This.NSS.Clear;
            
       This.SPI_Port.all.Transmit_Receive(read_payload_cmd,
-                                          received_data,
-                                          Positive(32));
+                                          This.readBuffer,
+                                         Positive(32));
+      This.last_status := TO_Register(This.readBuffer(0));
+      This.readBuffer(0..31) := This.readBuffer(1..32);
       
-      
-      for k of received_data loop
-         Console.putLine("Dato crudo... : " & Character'Val(k) & " (" & k'Img  & ")");
-      end loop;
       This.NSS.Set;
       
       
       
-      This.NSS.Clear;
-      send2(0) := 16#17#;
-      send2(0) := 16#FF#;
-      This.SPI_Port.all.Transmit_Receive(send2,
-                                          recv2,
-                                          Positive(2));
-      Console.putLine("Status: " & recv2(0)'Img);
-      Console.putLine("FIFO Status: " & recv2(1)'Img);
-      This.NSS.Set;
+--        This.NSS.Clear;
+--        send2(0) := 16#17#;
+--        send2(0) := 16#FF#;
+--        This.SPI_Port.all.Transmit_Receive(send2,
+--                                            recv2,
+--                                            Positive(2));
+--        Console.putLine("Status: " & recv2(0)'Img);
+--        Console.putLine("FIFO Status: " & recv2(1)'Img);
+--        This.NSS.Set;
+--        
+--        This.NSS.Clear;
+--        send2(0) := 16#27#;
+--        send2(0) := 16#00#;
+--        This.SPI_Port.all.Transmit_Receive(send2,
+--                                            recv2,
+--                                            Positive(2));
+--        Console.putLine("Status: " & recv2(0)'Img);
+--        Console.putLine("Status 2?: " & recv2(1)'Img);
+--        This.NSS.Set;
       
-      This.NSS.Clear;
-      send2(0) := 16#27#;
-      send2(0) := 16#00#;
-      This.SPI_Port.all.Transmit_Receive(send2,
-                                          recv2,
-                                          Positive(2));
-      Console.putLine("Status: " & recv2(0)'Img);
-      Console.putLine("Status 2?: " & recv2(1)'Img);
-      This.NSS.Set;
       
-      
-      Console.putChar(ASCII.CR);
+      --Console.putChar(ASCII.CR);
 
       return Hal.UInt8(0);
    end ReadWaitBlocking;
    
    
-   function newDataAvailable(This: RF24_Device) return Boolean is
-   begin 
-      return (This.readPointer > 0);
-   end newDataAvailable;
+--     function newDataAvailable(This: RF24_Device) return Boolean is
+--     begin 
+--        return (This.readPointer > 0);
+--     end newDataAvailable;
    
    procedure getData(This: in out RF24_Device;
-                     data: out STM32.SPI.UInt8_Buffer;
+                     data: out  HAL.UInt8_Array;
                      count: out Integer) is
       index : Integer := 0;
    begin
-      count := 0;
-      
-      Console.putLine("Count: " & This.readPointer'Img);
---        if This.readPointer > 0 then
---           for I in 0 .. This.readPointer-1 loop
---              data(I) := This.readBuffer(I);
---              count := count + 1;
---           end loop;
---        end if;
       for K of data loop
          K := This.readBuffer(index);
          index := index + 1;
-         count := count + 1;
-         if count = this.readPointer then
-            exit;
-         end if;
       end loop;
-      This.readPointer := 0;
-      
    end getData;
    
    procedure writeRegister(This: in out RF24_Device;

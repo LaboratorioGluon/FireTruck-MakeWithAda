@@ -60,6 +60,7 @@ package RF24 is
    end record;
    
    Config_Register_Dir: HAL.UInt8 := 16#0#;
+   
    type Config_Register is record
       PRIM_RX        : Boolean := False;
       PWR_UP         : Boolean := False;
@@ -84,21 +85,46 @@ package RF24 is
       Reserved_7_7      at 0 range 7 .. 7;
    end record;
    
+   type FIFO_Status_Register is record
+      RX_EMPTY       : Boolean := False;
+      RX_FULL        : Boolean := False;
+      reserved_1     : HAL.UInt2 := 0;
+      TX_EMPTY       : Boolean := False;
+      TX_FULL        : Boolean := False;
+      TX_REUSE       : Boolean := False;
+      reserved_2     : Boolean := False;
+   end record
+     with  Size => 8,
+     Bit_Order => System.Low_Order_First;
+
+   for FIFO_Status_Register use record
+      RX_EMPTY at 0 range 0 .. 0;
+      RX_FULL   at 0 range 1 .. 1;
+      reserved_1 at 0 range 2 .. 3;
+      TX_EMPTY at 0 range 4 .. 4;
+      TX_FULL at 0 range 5 .. 5;
+      TX_REUSE at 0 range 6 .. 6;
+      reserved_2 at 0 range 7 .. 7;
+   end record;
 
    function TO_Register is new
      Unchecked_Conversion(HAL.UInt8, Status_Register);
    function TO_Register is new
      Unchecked_Conversion(HAL.UInt8, Config_Register);
+   function TO_Register is new
+     Unchecked_Conversion(HAL.UInt8, FIFO_Status_Register);
    
    function FROM_Register is new
      Unchecked_Conversion(Config_Register, HAL.UInt8 );
    function FROM_Register is new
      Unchecked_Conversion(Status_Register, HAL.UInt8 );
+   function FROM_Register is new
+     Unchecked_Conversion(FIFO_Status_Register, HAL.UInt8 );
    
    
    type RF24_Device( SPI_Port : access STM32.SPI.SPI_Port) is 
      tagged limited record
-      readBuffer: STM32.SPI.UInt8_Buffer(0 .. 10) := (others => 0);
+      readBuffer: STM32.SPI.UInt8_Buffer(0 .. 32) := (others => 0);
       readPointer: Integer := 0;
       MOSI: aliased STM32.GPIO.GPIO_Point;
       MISO: aliased STM32.GPIO.GPIO_Point;
@@ -126,10 +152,10 @@ package RF24 is
       
    function ReadWaitBlocking(This: in out RF24_Device) return HAL.UInt8;
    
-   function newDataAvailable(This: RF24_Device) return Boolean;
+   --function newDataAvailable(This: RF24_Device) return Boolean;
    
    procedure getData(This: in out RF24_Device;
-                     data: out STM32.SPI.UInt8_Buffer;
+                     data: out HAL.UInt8_Array;
                      count: out Integer);
 
    procedure writeRegister(This: in out RF24_Device;
