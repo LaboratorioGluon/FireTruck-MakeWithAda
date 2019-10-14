@@ -7,8 +7,11 @@ with HAL;
 with Console;
 with rf24;
 with STM32.SPI;
+with STM32.PWM;
+with STM32.Timers;
 
 with MainComms;
+with CarController;
 
 
 procedure Main is
@@ -25,9 +28,44 @@ procedure Main is
 
    last_command : MainComms.Command;
 
+   pwm_mod : STM32.PWM.PWM_Modulator;
+
+
+
 begin
 
+   STM32.Board.Initialize_LEDs;
+   STM32.Board.Configure_User_Button_GPIO;
 
+   -- PWM
+   CarController.InitLeftMotor(LEFT_FWD     => STM32.Device.PE0,
+                               LEFT_BCK     => STM32.Device.PE2,
+                               LEFT_PWM     => STM32.Device.PB8,
+                               LEFT_Timer   => STM32.Device.Timer_4'Access,
+                               LEFT_Channel => STM32.Timers.Channel_3,
+                               LEFT_Af      => STM32.Device.GPIO_AF_TIM4_2);
+
+   CarController.InitRightMotor(RIGHT_FWD     => STM32.Device.PE1,
+                                RIGHT_BCK     => STM32.Device.PE3,
+                                RIGHT_PWM     => STM32.Device.PB9,
+                                RIGHT_Timer   => STM32.Device.Timer_4'Access,
+                                RIGHT_Channel => STM32.Timers.Channel_4,
+                                RIGHT_Af      => STM32.Device.GPIO_AF_TIM4_2);
+
+--     STM32.PWM.Configure_PWM_Timer(Generator => STM32.Device.Timer_4'Access,
+--                                   Frequency => 50_000);
+--
+--
+--     pwm_mod.Attach_PWM_Channel(Generator => STM32.Device.Timer_4'Access,
+--                                Channel   => STM32.Timers.Channel_3,
+--                                Point     => STM32.Device.PB8,
+--                                PWM_AF    => STM32.Device.GPIO_AF_TIM4_2);
+--
+--
+--     pwm_mod.Enable_Output;
+   STM32.GPIO.Set(Green_LED);
+   CarController.UpdateMotors;
+   -- end PWM
    Console.init(9600);
 
    RF24Dev.Init(MOSI_Pin => STM32.Device.PB15,
@@ -40,8 +78,6 @@ begin
       Console.putLine("Bien!");
    end if;
 
-   STM32.Board.Initialize_LEDs;
-   STM32.Board.Configure_User_Button_GPIO;
 
    STM32.Device.Enable_Clock (STM32.Device.PA1);
    STM32.GPIO.Configure_IO (STM32.Device.PA1,
@@ -49,6 +85,12 @@ begin
                              Resistors   => Floating,
                              Output_Type => Push_Pull,
                              Speed       => Speed_100MHz
+                            ));
+
+   STM32.Device.Enable_Clock (STM32.Device.PD10);
+   STM32.GPIO.Configure_IO (STM32.Device.PD10,
+                            (Mode_In,
+                             Resistors   => Floating
                             ));
 
    RF24Dev.powerUp;
