@@ -1,8 +1,9 @@
 --with Console;
-
+with STM32.Board; use STM32.Board;
+with STM32.GPIO;
 package body MainComms is
 
-   function getLastCommand(raw_data: HAL.UInt8_Array) 
+   function parseCommand(raw_data: HAL.UInt8_Array) 
                            return Command is
       ret_command : Command;
       
@@ -19,6 +20,28 @@ package body MainComms is
       end loop;
       
       return ret_command;
-   end getLastCommand;
+   end parseCommand;
+   
+   procedure updateCommands ( dev: in out RF24.RF24_Device ) is
+      reg : HAL.UInt8;
+      data:  HAL.UInt8_Array(0..32);
+      cmd : Command;
+      count : Integer := 0;
+   begin
+	
+      while dev.newDataAvailable loop
+         STM32.GPIO.Set(Red_LED);
+         reg := dev.ReadWaitBlocking;
+         dev.getData(data, count);
+         cmd := parseCommand(data);
+         Last_Command_array(cmd.Tag) := cmd;
+        end loop;
+   end updateCommands;
 
+   
+   function getLastCommand(Tag: Command_type) return Command is
+   begin
+      return Last_Command_Array(Tag);
+   end getLastCommand;
+   
 end MainComms;

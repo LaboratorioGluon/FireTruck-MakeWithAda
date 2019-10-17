@@ -2,19 +2,7 @@ with STM32.Device;
 
 package body CarController is
 
---     
---     procedure Init(RIGHT_FWD: STM32.GPIO.GPIO_Point;
---                    RIGHT_BCK: STM32.GPIO.GPIO_Point;
---                    LEFT_FWD : STM32.GPIO.GPIO_Point;
---                    LEFT_BCK : STM32.GPIO.GPIO_Point;
---  				  ) is
---     begin
---        RIGHT_FWD_Pin := RIGHT_FWD;
---        RIGHT_BCK_Pin := RIGHT_BCK;
---        LEFT_FWD_Pin  := LEFT_FWD;
---        LEFT_BCK_Pin  := LEFT_BCK;
---     end Init;
---     
+
    procedure InitRightMotor(RIGHT_FWD: in STM32.GPIO.GPIO_Point;
                             RIGHT_BCK: in STM32.GPIO.GPIO_Point;
                             RIGHT_PWM: in STM32.GPIO.GPIO_Point;
@@ -44,7 +32,7 @@ package body CarController is
                                 ));
       
       STM32.PWM.Configure_PWM_Timer(Generator => RIGHT_Timer,
-                                    Frequency => 50_000);
+                                    Frequency => 50);
 		
       RIGHT_Modulator.Attach_PWM_Channel(Generator => RIGHT_Timer,
                                         Channel   => RIGHT_Channel,
@@ -72,7 +60,6 @@ package body CarController is
 		
       STM32.Device.Enable_Clock(LEFT_FWD_Pin);
       STM32.Device.Enable_Clock(LEFT_BCK_Pin);
-      --STM32.Device.Enable_Clock(LEFT_PWM_Pin);
       
       LEFT_FWD_Pin.Configure_IO((STM32.GPIO.Mode_Out,
                                 Resistors   => STM32.GPIO.Floating,
@@ -83,12 +70,10 @@ package body CarController is
                                 Resistors   => STM32.GPIO.Floating,
                                 Output_Type => STM32.GPIO.Push_Pull,
                                 Speed       => STM32.GPIO.Speed_100MHz
-                               ));
-      --Configure_IO (User_Button_Point, (Mode_In, Resistors => Floating));
-      
+                               ));      
       
       STM32.PWM.Configure_PWM_Timer(Generator => LEFT_Timer,
-                                    Frequency => 50_000);
+                                    Frequency => 50);
 		
       LEFT_Modulator.Attach_PWM_Channel(Generator => LEFT_Timer,
                                         Channel   => LEFT_Channel,
@@ -101,7 +86,7 @@ package body CarController is
       STM32.GPIO.Set(LEFT_FWD_Pin);
    end InitLeftMotor;
    
-   procedure UpdateMotors is
+   procedure UpdateMotors_Old is
       
       function Sine (Input : Long_Float) return Long_Float is
          Pi : constant Long_Float := 3.14159_26535_89793_23846;
@@ -132,6 +117,58 @@ package body CarController is
          end loop;
       end;
       
-   end UpdateMotors;
+   end UpdateMotors_Old;
 
+   procedure setDirection(DIR: in Direction) is
+   begin
+      currentDirection := DIR;
+      case DIR is
+      when NONE => 
+         LEFT_FWD_Pin.Clear;
+         LEFT_BCK_Pin.Clear;
+         RIGHT_FWD_Pin.Clear;
+         RIGHT_BCK_Pin.Clear;
+         LEFT_Modulator.Set_Duty_Cycle(0);
+         RIGHT_Modulator.Set_Duty_Cycle(0);
+      when FORWARD => 
+         LEFT_FWD_Pin.Set;
+         LEFT_BCK_Pin.Clear;
+         RIGHT_FWD_Pin.Set;
+         RIGHT_BCK_Pin.Clear;
+         LEFT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
+         RIGHT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
+      when BACKWARDS => 
+         LEFT_FWD_Pin.Clear;
+         LEFT_BCK_Pin.Set;
+         RIGHT_FWD_Pin.Clear;
+         RIGHT_BCK_Pin.Set;
+         LEFT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
+         RIGHT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));	
+      when LEFT =>
+         LEFT_FWD_Pin.Clear;
+         LEFT_BCK_Pin.Set;
+         RIGHT_FWD_Pin.Set; -- Set
+         RIGHT_BCK_Pin.Clear;
+         LEFT_Modulator.Set_Duty_Cycle(Integer(currentSpeed)); -- 0
+         RIGHT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
+      when RIGHT =>
+         LEFT_FWD_Pin.Set; -- Set
+         LEFT_BCK_Pin.Clear;
+         RIGHT_FWD_Pin.Clear;
+         RIGHT_BCK_Pin.Set;
+         LEFT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
+         RIGHT_Modulator.Set_Duty_Cycle(Integer(Integer(currentSpeed))); -- 0
+      end case;
+
+   end setDirection;
+   
+   
+   procedure setSpeed( SPD: in Speed) is
+
+   begin
+	
+      currentSpeed := SPD;
+
+   end setSpeed;
+   
 end CarController;

@@ -224,8 +224,10 @@ package body RF24 is
       
       if recv2(1) = 2#00100110# then
          Console.putLine("RX Correct!");
+         InitOK := True;
       else
          Console.putLine("[ERROR] RX Correct!");
+         InitOK := False;
       end if;
       This.NSS.Set;
       delay 0.1;
@@ -313,7 +315,8 @@ package body RF24 is
       This.CE.set;
       delay 0.1;
    end setRxMode;
-     
+   
+
    
    function ReadWaitBlocking(This: in out RF24_Device) return HAL.UInt8 is
       
@@ -331,7 +334,7 @@ package body RF24 is
          
       while status_reg.RX_EMPTY loop
          status_reg := TO_Register(This.readRegister(RF24.FIFO_STATUS));
-         delay 0.2;
+         delay 0.1;
       end loop;
 
         
@@ -376,10 +379,10 @@ package body RF24 is
    end ReadWaitBlocking;
    
    
---     function newDataAvailable(This: RF24_Device) return Boolean is
---     begin 
---        return (This.readPointer > 0);
---     end newDataAvailable;
+   function newDataAvailable(This: in out RF24_Device) return Boolean is
+   begin 
+      return not (TO_Register(This.readRegister(RF24.FIFO_STATUS)).RX_EMPTY);
+   end newDataAvailable;
    
    procedure getData(This: in out RF24_Device;
                      data: out  HAL.UInt8_Array;

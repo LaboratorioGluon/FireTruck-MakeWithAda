@@ -18,7 +18,7 @@ procedure Main is
    use type Ada.Real_Time.Time;
    use type HAL.Uint8;
    Next_execution: Ada.Real_Time.Time;
-   Period: constant Ada.Real_Time.Time_Span:= Ada.Real_Time.To_Time_Span(0.5); -- 100ms
+   Period: constant Ada.Real_Time.Time_Span:= Ada.Real_Time.To_Time_Span(0.5);
 
    reg : HAL.UInt8;
    data:  HAL.UInt8_Array(0..32);
@@ -63,8 +63,7 @@ begin
 --
 --
 --     pwm_mod.Enable_Output;
-   STM32.GPIO.Set(Green_LED);
-   CarController.UpdateMotors;
+   --CarController.UpdateMotors;
    -- end PWM
    Console.init(9600);
 
@@ -99,6 +98,12 @@ begin
    RF24Dev.setRxMode;
    delay 0.01;
 
+   if RF24.InitOK then
+      STM32.GPIO.Set(Green_LED);
+   else
+      STM32.GPIO.Set(Red_LED);
+   end if;
+
    Next_execution:= Ada.Real_Time.Clock + Period;
    loop
 
@@ -115,27 +120,47 @@ begin
 --        Console.put("Data: ");
 --        Console.putLine(ret'img);
 
-      reg := RF24Dev.ReadWaitBlocking;
-      Console.putLine("Fin lectura!");
+      --reg := RF24Dev.ReadWaitBlocking;
+      --Console.putLine("Fin lectura!");
                       --        Console.putLine("Fin lectura... : ");
-      RF24Dev.getData(data, count);
-      Console.putLine("Get Data!");
-      Console.putLine("Data: " & data(2)'Img);
-      last_command := MainComms.getLastCommand(data);
-      Console.putLine("Tag: " & last_command.Tag'Img);
-      Console.putLine("Len: " & last_command.Len'Img);
-      Console.putLine("Data: " & last_command.Data(0)'Img);
+	  
+      --RF24Dev.getData(data, count);
+      --Console.putLine("Get Data!");
+      --Console.putLine("Data: " & data(2)'Img);
+      --last_command := MainComms.parseCommand(data);
+      --Console.putLine("Tag: " & last_command.Tag'Img);
+      --Console.putLine("Len: " & last_command.Len'Img);
+      --Console.putLine("Data: " & last_command.Data(0)'Img);
 
-      case last_command.Tag is
-         when MainComms.TEST_LED =>
-            if last_command.Data(0) = 0 then
-               STM32.GPIO.Clear(Green_LED);
-            else
-               STM32.GPIO.Set(Green_LED);
-            end if;
-         when others =>
-            null;
-      end case;
+      MainComms.updateCommands(RF24Dev);
+      
+--        case last_command.Tag is
+--           when MainComms.TEST_LED =>
+--              if last_command.Data(0) = 0 then
+--                 STM32.GPIO.Clear(Green_LED);
+--              else
+--                 STM32.GPIO.Set(Green_LED);
+--              end if;
+--           when MainComms.SET_DIRECTION =>
+--              CarController.setDirection(CarController.Direction'Val(last_command.Data(0)));
+--           when MainComms.SET_SPEED =>
+--              CarController.setSpeed(CarController.Speed(last_command.Data(0)));
+--           when others =>
+--              null;
+--        end case;
+
+      if MainComms.getLastCommand(Tag => MainComms.TEST_LED).Data(0) = 1 then
+         STM32.GPIO.Set(Green_LED);
+      else
+         STM32.GPIO.Clear(Green_LED);
+      end if;
+      
+      CarController.setDirection(
+                                 CarController.Direction'Val(
+                                   MainComms.getLastCommand(Tag => MainComms.SET_DIRECTION).Data(0))
+                                );
+      CarController.setSpeed(CarController.Speed(MainComms.getLastCommand(Tag => MainComms.SET_SPEED).Data(0)));
+      STM32.GPIO.Set(Blue_LED);
 --        Console.putLine("Count: " & count'Img);
 --  --      Console.putLine("Data " & reg'Img);
 --        for I in 1 .. count loop
@@ -156,7 +181,7 @@ begin
 
 
       --cONSOLE.putLine("Test!");
-      delay until Next_execution;
-      Next_execution:= Ada.Real_Time.clock + Period;
+--        delay until Next_execution;
+--        Next_execution:= Ada.Real_Time.clock + Period;
    end loop;
 end Main;

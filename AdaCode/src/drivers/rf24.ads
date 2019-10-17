@@ -8,7 +8,7 @@ package RF24 is
    
    -- temp
    pipe: HAL.UInt64 := 16#DEADBEEF00#;
-  
+   InitOK : Boolean := True;
    type Read_Command is record
       Register: HAL.UInt5 := 0;
       Fixed: HAL.UInt3 := 0;
@@ -152,7 +152,7 @@ package RF24 is
       
    function ReadWaitBlocking(This: in out RF24_Device) return HAL.UInt8;
    
-   --function newDataAvailable(This: RF24_Device) return Boolean;
+   function newDataAvailable(This: in out RF24_Device) return Boolean;
    
    procedure getData(This: in out RF24_Device;
                      data: out HAL.UInt8_Array;
@@ -165,7 +165,7 @@ package RF24 is
    function readRegister(This: in out RF24_Device;
                          Reg: in HAL.UInt5) return HAL.Uint8;
    
-   
+  
    
    
    
