@@ -1,20 +1,21 @@
 import cv2
 import numpy as np
 import imutils
-
+import Comms
 from Detector import Detector
 
 
 webcam = cv2.VideoCapture(0)
-
+webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, True)
 detect = Detector()
-
+detect.setMode("simple")
+cycles = 0
 while True:
 
     check, frame = webcam.read()
     if frame is None:
         break
-        
+    webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
         
     cv2.imshow("captura", frame)
     
@@ -30,3 +31,6 @@ while True:
         detect.setMode("test")
     elif key == ord('n'):
         detect.setMode("normal")
+    elif key == ord('s'):
+        detect.setMode("simple")
+    

@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import imutils
-
+import Comms
+import math
 class Detector:
     
     #hsv_azul = ((100,197,255),(88,120,180))
@@ -25,7 +26,10 @@ class Detector:
     modo = "normal"
     
     def __init__(self):
+    
+        self.comm = Comms.Comms()
         self.Inv_Cam_Matrix = np.linalg.inv(self.Cam_Matrix)
+
         pass
        
     def setMode(self, modo):
@@ -37,6 +41,8 @@ class Detector:
             self.Detect(img)
         elif self.modo == "test":
             self.Tester(img)
+        elif self.modo == "simple":
+            self.Simple(img)
             
             
     def calculate_XYZ(self,u,v, rvec, tvec):
@@ -160,12 +166,88 @@ class Detector:
     
     # Filter the mask
     def FilterMask(self, mask):
-        kernel = np.ones((5,5), np.uint8)
-        img_dilation = cv2.dilate(mask, kernel, iterations=3)
-        img_erosion = cv2.erode(img_dilation, kernel, iterations=3)
+        kernel = np.ones((10,10), np.uint8)
+        img_dilation = cv2.dilate(mask, kernel, iterations=5)
+        img_erosion = cv2.erode(img_dilation, kernel, iterations=5)
         return img_erosion
 
+    def Simple(self, img):
+        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
+         
+      
+        mask_amarillo = cv2.inRange(img_hsv, (12,44,215), (49,255,255))
+        mask_verde = cv2.inRange(img_hsv, (89,178,55), (100,250,97))
+        mask_rojo = cv2.inRange(img_hsv, (157,98,119),(204,255,176))
         
+        mask_amarillo  = self.FilterMask(mask_amarillo)
+        mask_verde = self.FilterMask(mask_verde)
+        mask_rojo = self.FilterMask(mask_rojo)
+        
+        try:
+            M = cv2.moments(mask_amarillo)
+            cnts = cv2.findContours(mask_amarillo.copy(), cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            if len(cnts) > 0:
+                c_am = max(cnts, key=cv2.contourArea)
+                ((x,y), radius) = cv2.minEnclosingCircle(c_am)
+                cv2.circle(img, (int(x),int(y)), 5, (0, 0, 255), -1)
+            
+            centro_amarillo = ( int(x), int(y) )
+            
+            
+            M = cv2.moments(mask_verde)
+            cnts = cv2.findContours(mask_verde.copy(), cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            if len(cnts) > 0:
+                c_ver = max(cnts, key=cv2.contourArea)
+                ((x,y), radius) = cv2.minEnclosingCircle(c_ver)
+                cv2.circle(img, (int(x),int(y)), 5, (0, 0, 255), -1)
+            centro_verde = ( int(x), int(y) )
+                
+            M = cv2.moments(mask_rojo)
+            cnts = cv2.findContours(mask_rojo.copy(), cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)
+            cnts = imutils.grab_contours(cnts)
+            if len(cnts) > 0:
+                c_roj = max(cnts, key=cv2.contourArea)
+                ((x,y), radius) = cv2.minEnclosingCircle(c_roj)
+                cv2.circle(img, (int(x),int(y)), 5, (0, 0, 255), -1)
+            
+            centro_rojo = ( int(x), int(y) )        
+        except:
+            pass
+        try:
+            v1 = ((centro_verde[0]-centro_amarillo[0]), (centro_verde[1]-centro_amarillo[1]))
+            v2 = ((centro_rojo[0]-centro_amarillo[0]), (centro_rojo[1]-centro_amarillo[1]))
+            vab = v1[0]*v2[0] + v1[1]*v2[1]
+            mv1 = math.sqrt(v1[0]*v1[0] + v1[1]*v1[1])
+            mv2 = math.sqrt(v2[0]*v2[0] + v2[1]*v2[1])
+            mm = mv1*mv2
+            angle = math.acos(vab/mm)
+            angle = angle * 180 /3.1415
+            a1 = self.CalcAngle(v1)* 180 /3.1415
+            a2 = self.CalcAngle(v2)* 180 /3.1415
+            print("angle :" + str(angle))
+            print("v2 :" + str(a1))
+            print("v1 :" + str(a2))
+            if angle > 10:
+                if a1 > a2:
+                    self.comm.setDirection(2)
+                    print("DRCHA")
+                else:
+                    self.comm.setDirection(1)
+                    print("IZDA")
+            else:
+                self.comm.setDirection(0)
+        except:
+            self.comm.setDirection(0)
+        
+        cv2.imshow("Simple", img)
+    def CalcAngle(self, vec):
+        m = math.sqrt(vec[0]*vec[0] + vec[1]*vec[1])
+        return math.acos(vec[0]/m)
     def Tester(self, img):
         if self.is_tester_initialized == False:
             cv2.namedWindow('image')
@@ -179,7 +261,7 @@ class Detector:
             self.is_tester_initialized = True
         
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
-        
+        img_hsv = cv2.GaussianBlur(img_hsv, (13, 13), 0)
         hh = cv2.getTrackbarPos('HH','image')
         hl = cv2.getTrackbarPos('HL','image')
         sh = cv2.getTrackbarPos('S_H','image')
