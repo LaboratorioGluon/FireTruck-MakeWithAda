@@ -10,6 +10,21 @@ RF24 radio(pinCE, pinCSN);
 const uint64_t pipe = 0xDEADBEEF00LL;
 
 char data[16] = "Hola mundo";
+char receivedChar;
+
+char cmd[20] ="";
+int cmd_len = 0;
+
+uint8_t isSend;
+
+union {
+  struct __attribute__((packed)) {
+    uint8_t tag;
+    uint8_t len;
+    uint8_t data[30];
+  } packet;
+  uint8_t raw[32];
+} command;
 
 char receivedChar;
 
@@ -34,7 +49,6 @@ void setup() {
   radio.openWritingPipe(pipe);
   cmd_len = 0;
   Serial.begin(19200);
-   
 }
 
 void loop() {
@@ -82,5 +96,8 @@ void loop() {
     }
   
    //delay(1000);
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 }
