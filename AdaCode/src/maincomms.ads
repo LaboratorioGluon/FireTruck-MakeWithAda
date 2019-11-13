@@ -8,6 +8,7 @@ package MainComms is
                          TEST_LED,
                          SET_DIRECTION,
                          SET_SPEED,
+                         SET_SERVO,
                          NULL_CMD
                         );
    
@@ -26,12 +27,14 @@ package MainComms is
    default_test_led: Command := (Tag => TEST_LED, Len => 1, Data => (0 => 1, others => 0));
    default_direction: Command := (Tag => SET_DIRECTION, Len => 1, Data => (0 => 0, others => 0));
    default_speed: Command := (Tag => SET_SPEED, Len => 1, Data => (0 => 25, others => 0));
+   default_servo: Command := (Tag =>SET_SERVO, Len => 2, DATA => ( 0 => 0, 1 => 0, others => 0));
    
    -- Storing the last command of each type
    type Command_array is array (Command_Type) of Command;
    Last_Command_Array : Command_array := (TEST_LED => default_test_led,
                                           SET_DIRECTION => default_direction,
                                           SET_SPEED=> default_speed,
+                                          SET_SERVO => default_servo,
                                           NULL_CMD => null_Command);
    
    -------------------------------------------------------------------
