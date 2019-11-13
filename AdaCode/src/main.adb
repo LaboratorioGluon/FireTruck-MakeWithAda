@@ -13,6 +13,7 @@ with STM32.Timers;
 with MainComms;
 with CarController;
 with Servo;
+with Unchecked_Conversion;
 
 procedure Main is
    use type Ada.Real_Time.Time;
@@ -50,6 +51,9 @@ procedure Main is
          return P * (Y * abs (Y) - Y) + Y;
    end Sine;
    
+   function toDeg is new Unchecked_Conversion
+     (Source => HAL.UInt8,
+      Target => Servo.degree);
 begin
    STM32.Board.Configure_User_Button_GPIO;
    STM32.Board.Initialize_LEDs;
@@ -82,7 +86,7 @@ begin
                          Top    => 2500,
                          Bottom => 600);
    
-   servo1.setLimits(Max_Degree => 30,
+   servo1.setLimits(Max_Degree => 45,
                     Min_Degree => -30);
    
    servo2.Init(Pin            => STM32.Device.PB4,
@@ -275,8 +279,9 @@ begin
                                 );
       CarController.setSpeed(CarController.Speed(MainComms.getLastCommand(Tag => MainComms.SET_SPEED).Data(0)));
       
-      servo1.setDegrees(0);
-      servo2.setDegrees(0);
+      
+      servo1.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(0)));
+      servo2.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(1)));
       STM32.GPIO.Set(Blue_LED);
 --        Console.putLine("Count: " & count'Img);
 --  --      Console.putLine("Data " & reg'Img);
