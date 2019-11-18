@@ -7,13 +7,13 @@ with HAL;
 with Console;
 with rf24;
 with STM32.SPI;
-with STM32.PWM;
 with STM32.Timers;
 
 with MainComms;
 with CarController;
 with Servo;
 with Unchecked_Conversion;
+with Commander;
 
 procedure Main is
    use type Ada.Real_Time.Time;
@@ -22,15 +22,12 @@ procedure Main is
    Next_execution: Ada.Real_Time.Time;
    Period: constant Ada.Real_Time.Time_Span:= Ada.Real_Time.To_Time_Span(0.5);
 
-   reg : HAL.UInt8;
-   data:  HAL.UInt8_Array(0..32);
-   count : Integer := 0;
 
    RF24Dev : RF24.RF24_Device(STM32.Device.SPI_2'Access);
 
    last_command : MainComms.Command;
+   last_command_status : Commander.CommandStatus;
 
-   pwm_mod : STM32.PWM.PWM_Modulator;
 
    PumpPin    : STM32.GPIO.GPIO_Point := STM32.Device.PD4;
    PumpPinNot : STM32.GPIO.GPIO_Point := STM32.Device.PD3;
@@ -39,26 +36,12 @@ procedure Main is
    servo2 : Servo.Servo;
    
    servo_vertical: Servo.Servo renames servo2;
-
-   function Sine (Input : Long_Float) return Long_Float is
-         Pi : constant Long_Float := 3.14159_26535_89793_23846;
-         X  : constant Long_Float := Long_Float'Remainder (Input, Pi * 2.0);
-         B  : constant Long_Float := 4.0 / Pi;
-         C  : constant Long_Float := (-4.0) / (Pi * Pi);
-         Y  : constant Long_Float := B * X + C * X * abs (X);
-         P  : constant Long_Float := 0.225;
-      begin
-         return P * (Y * abs (Y) - Y) + Y;
-   end Sine;
    
-   function toDeg is new Unchecked_Conversion
-     (Source => HAL.UInt8,
-      Target => Servo.degree);
 begin
    STM32.Board.Configure_User_Button_GPIO;
    STM32.Board.Initialize_LEDs;
    
-   -- We need to enable and set to HIGH PA1 ASAP.
+   -- We need to enable and set to HIGH PumpPinNot ASAP.
    STM32.Device.Enable_Clock (PumpPin);
    STM32.GPIO.Configure_IO (PumpPin,
                             (Mode_Out,
@@ -223,87 +206,55 @@ begin
    Next_execution:= Ada.Real_Time.Clock + Period;
    loop
 
-
-      if STM32.Device.PA0.Set then
-         STM32.GPIO.Set(Orange_LED);
-         STM32.GPIO.Clear(PumpPin);
-         STM32.GPIO.Set(PumpPinNot);
-      else
-         STM32.GPIO.Set(PumpPin);
-         STM32.GPIO.Clear(PumpPinNot);
-         STM32.GPIO.Clear (Orange_LED);
-      end if;
-      --Console.putLine("Esperando..");
-
---        Console.put("Data: ");
---        Console.putLine(ret'img);
-
-      --reg := RF24Dev.ReadWaitBlocking;
-      --Console.putLine("Fin lectura!");
-                      --        Console.putLine("Fin lectura... : ");
-	  
-      --RF24Dev.getData(data, count);
-      --Console.putLine("Get Data!");
-      --Console.putLine("Data: " & data(2)'Img);
-      --last_command := MainComms.parseCommand(data);
-      --Console.putLine("Tag: " & last_command.Tag'Img);
-      --Console.putLine("Len: " & last_command.Len'Img);
-      --Console.putLine("Data: " & last_command.Data(0)'Img);
-
-      MainComms.updateCommands(RF24Dev);
-      
---        case last_command.Tag is
---           when MainComms.TEST_LED =>
---              if last_command.Data(0) = 0 then
---                 STM32.GPIO.Clear(Green_LED);
---              else
---                 STM32.GPIO.Set(Green_LED);
---              end if;
---           when MainComms.SET_DIRECTION =>
---              CarController.setDirection(CarController.Direction'Val(last_command.Data(0)));
---           when MainComms.SET_SPEED =>
---              CarController.setSpeed(CarController.Speed(last_command.Data(0)));
---           when others =>
---              null;
---        end case;
-
-      if MainComms.getLastCommand(Tag => MainComms.TEST_LED).Data(0) = 1 then
-         STM32.GPIO.Set(Green_LED);
-      else
-         STM32.GPIO.Clear(Green_LED);
-      end if;
-      
-      CarController.setDirection(
-                                 CarController.Direction'Val(
-                                   MainComms.getLastCommand(Tag => MainComms.SET_DIRECTION).Data(0))
-                                );
-      CarController.setSpeed(CarController.Speed(MainComms.getLastCommand(Tag => MainComms.SET_SPEED).Data(0)));
-      
-      
-      servo1.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(0)));
-      servo2.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(1)));
-      STM32.GPIO.Set(Blue_LED);
---        Console.putLine("Count: " & count'Img);
---  --      Console.putLine("Data " & reg'Img);
---        for I in 1 .. count loop
---           Console.put(data(I)'img & '_');
---        end loop;
---        Console.put(""&ASCII.CR);
-
---        if RF24Dev.newDataAvailable then
---
---           STM32.GPIO.Toggle(Green_LED);
---           RF24Dev.getData(data, count);
---           Console.put("Data: ");
---           for I in 1 .. count loop
---              Console.put(data(I)'img & '_');
---           end loop;
+--        if STM32.Device.PA0.Set then
+--           STM32.GPIO.Set(Orange_LED);
+--           STM32.GPIO.Clear(PumpPin);
+--           STM32.GPIO.Set(PumpPinNot);
+--        else
+--           STM32.GPIO.Set(PumpPin);
+--           STM32.GPIO.Clear(PumpPinNot);
+--           STM32.GPIO.Clear (Orange_LED);
 --        end if;
 
+      MainComms.updateCommands(RF24Dev);
 
+--        if MainComms.getLastCommand(Tag => MainComms.TEST_LED).Data(0) = 1 then
+--           STM32.GPIO.Set(Green_LED);
+--        else
+--           STM32.GPIO.Clear(Green_LED);
+--        end if;
+--        
+--        CarController.setDirection(
+--                                   CarController.Direction'Val(
+--                                     MainComms.getLastCommand(Tag => MainComms.SET_DIRECTION).Data(0))
+--                                  );
+--        CarController.setSpeed(CarController.Speed(MainComms.getLastCommand(Tag => MainComms.SET_SPEED).Data(0)));
+      
+      for cmd in MainComms.Command_type loop
+         last_command := MainComms.getLastCommand(cmd);
+         case last_command.Tag is
+            when MainComms.TEST_LED => null;
+            when MainComms.SET_DIRECTION => 
+               last_command_status := Commander.CommandCarControllerDir(last_command);
+            when MainComms.SET_SPEED => 
+               last_command_status := Commander.CommandCarControllerSpeed(last_command);
+            when MainComms.SET_SERVO => 
+               last_command_status := Commander.CommandServo(Ser1 => servo1,
+                                                             Ser2 => servo2,
+                                                             Cmd  => last_command);
+            when MainComms.SET_PUMP =>
+               if MainComms.getLastCommand(MainComms.SET_PUMP).Data(0) = 0 then
+                  PumpPinNot.clear;
+               else
+                  PumpPinNot.set;
+               end if;
+            when others => null;
+         end case;
+      end loop;
+--        
+--        servo1.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(0)));
+--        servo2.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(1)));
+--        STM32.GPIO.Set(Blue_LED);
 
-      --cONSOLE.putLine("Test!");
---        delay until Next_execution;
---        Next_execution:= Ada.Real_Time.clock + Period;
    end loop;
 end Main;

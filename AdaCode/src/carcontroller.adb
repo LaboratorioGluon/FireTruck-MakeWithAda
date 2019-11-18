@@ -85,39 +85,6 @@ package body CarController is
       LEFT_BCK_Pin.Clear;
       STM32.GPIO.Set(LEFT_FWD_Pin);
    end InitLeftMotor;
-   
-   procedure UpdateMotors_Old is
-      
-      function Sine (Input : Long_Float) return Long_Float is
-         Pi : constant Long_Float := 3.14159_26535_89793_23846;
-         X  : constant Long_Float := Long_Float'Remainder (Input, Pi * 2.0);
-         B  : constant Long_Float := 4.0 / Pi;
-         C  : constant Long_Float := (-4.0) / (Pi * Pi);
-         Y  : constant Long_Float := B * X + C * X * abs (X);
-         P  : constant Long_Float := 0.225;
-      begin
-         return P * (Y * abs (Y) - Y) + Y;
-      end Sine;
-      
-   begin
-      
-      declare
-         Arg       : Long_Float := 0.0;
-         Value     : Integer;
-         Increment : constant Long_Float := 0.00003;
-         --  The Increment value controls the rate at which the brightness
-         --  increases and decreases. The value is more or less arbitrary, but
-         --  note that the effect of compiler optimization is observable.
-      begin
-         loop
-            Value := Integer (50.0 * (1.0 + Sine (Arg)));
-            LEFT_Modulator.Set_Duty_Cycle (Value);
-            RIGHT_Modulator.Set_Duty_Cycle (Value);
-            Arg := Arg + Increment;
-         end loop;
-      end;
-      
-   end UpdateMotors_Old;
 
    procedure setDirection(DIR: in Direction) is
    begin
@@ -157,7 +124,14 @@ package body CarController is
          RIGHT_FWD_Pin.Clear;
          RIGHT_BCK_Pin.Set;
          LEFT_Modulator.Set_Duty_Cycle(Integer(currentSpeed));
-         RIGHT_Modulator.Set_Duty_Cycle(Integer(Integer(currentSpeed))); -- 0
+         RIGHT_Modulator.Set_Duty_Cycle(Integer(currentSpeed)); -- 0
+      when others =>
+         LEFT_FWD_Pin.Clear;
+         LEFT_BCK_Pin.Clear;
+         RIGHT_FWD_Pin.Clear;
+         RIGHT_BCK_Pin.Clear;
+         LEFT_Modulator.Set_Duty_Cycle(0);
+         RIGHT_Modulator.Set_Duty_Cycle(0);
       end case;
 
    end setDirection;

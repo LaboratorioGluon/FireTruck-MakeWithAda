@@ -6,9 +6,9 @@ with Unchecked_Conversion;
 with System;
 package RF24 is
    
-   -- temp
    pipe: HAL.UInt64 := 16#DEADBEEF00#;
    InitOK : Boolean := True;
+   
    type Read_Command is record
       Register: HAL.UInt5 := 0;
       Fixed: HAL.UInt3 := 0;

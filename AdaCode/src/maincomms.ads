@@ -9,25 +9,34 @@ package MainComms is
                          SET_DIRECTION,
                          SET_SPEED,
                          SET_SERVO,
+                         SET_PUMP,
+                         SET_MAIN_STATUS,
+                         INFO_TARGET,
                          NULL_CMD
                         );
    
    type Len_type is range 1 .. 30; 
-   type Command_data_type is new  HAL.UInt8_Array(0 .. 30);
+   type Command_data_type is new  HAL.UInt8_Array(0 .. Integer(Len_type'Last));
    
    type Command is record
       Tag      : Command_Type;
       Len      : Len_type;
       Data     : Command_data_type;
+      NewData  : Boolean;
    end record;
    
    
    -- Default commands
-   null_Command : Command := (Tag => NULL_CMD, Len => 1, Data => (others => 0));
-   default_test_led: Command := (Tag => TEST_LED, Len => 1, Data => (0 => 1, others => 0));
-   default_direction: Command := (Tag => SET_DIRECTION, Len => 1, Data => (0 => 0, others => 0));
-   default_speed: Command := (Tag => SET_SPEED, Len => 1, Data => (0 => 25, others => 0));
-   default_servo: Command := (Tag =>SET_SERVO, Len => 2, DATA => ( 0 => 0, 1 => 0, others => 0));
+   null_Command      : Command := (Tag => NULL_CMD, Len => 1, Data => (others => 0), NewData => False);
+   default_test_led  : Command := (Tag => TEST_LED, Len => 1, Data => (0 => 1, others => 0), NewData => False);
+   default_direction : Command := (Tag => SET_DIRECTION, Len => 1, Data => (0 => 0, others => 0), NewData => False);
+   default_speed     : Command := (Tag => SET_SPEED, Len => 1, Data => (0 => 25, others => 0), NewData => False);
+   default_servo     : Command := (Tag => SET_SERVO, Len => 2, DATA => ( 0 => 0, 1 => 0, others => 0), NewData => False);
+   default_mainStatus: Command := (Tag => SET_MAIN_STATUS, Len => 1, DATA => ( 0 => 0, 1 => 0, others => 0), NewData => False);  
+   default_pump      : Command := (Tag => SET_PUMP, Len => 1, DATA => ( 0 => 0, others => 0), NewData => False);
+ 
+   default_infoTarget: Command := (Tag => INFO_TARGET, Len => 2, DATA => (others => 0), NewData => False);
+
    
    -- Storing the last command of each type
    type Command_array is array (Command_Type) of Command;
@@ -35,6 +44,9 @@ package MainComms is
                                           SET_DIRECTION => default_direction,
                                           SET_SPEED=> default_speed,
                                           SET_SERVO => default_servo,
+                                          SET_PUMP => default_pump,
+                                          SET_MAIN_STATUS => default_mainStatus,
+                                          INFO_TARGET => default_infoTarget,
                                           NULL_CMD => null_Command);
    
    -------------------------------------------------------------------

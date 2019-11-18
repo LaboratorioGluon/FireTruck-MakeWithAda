@@ -9,7 +9,7 @@ SET_SERVO = 3
 class Comms:
 
     def __init__(self):
-        self.ser = serial.Serial('\\COM6', 19200) 
+        self.ser = serial.Serial('\\COM5', 19200) 
         self.ser.write(self.getCmd(SET_SPEED, [20]))
         
     def close(self):

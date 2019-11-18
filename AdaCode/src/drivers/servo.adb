@@ -30,8 +30,8 @@ package body Servo is
    procedure setDegrees(This : in out Servo;
                         Degrees: in degree) is
       use type HAL.UInt32;
-      top: Integer := Integer(This.calibration_top-This.calibration_zero);
-      bottom: Integer := Integer(This.calibration_zero-This.calibration_bot);
+      top: constant Integer := Integer(This.calibration_top-This.calibration_zero);
+      bottom: constant Integer := Integer(This.calibration_zero-This.calibration_bot);
       value: STM32.PWM.Microseconds;
       local_degree : degree := Degrees;
    begin

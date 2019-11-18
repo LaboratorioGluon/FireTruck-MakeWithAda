@@ -18,7 +18,7 @@ package body MainComms is
       for i in 0 .. raw_data(1) loop
          ret_command.Data(Standard.Integer(i)) := raw_data(Standard.Integer(i) + 2);
       end loop;
-      
+      ret_command.NewData := True;
       return ret_command;
    end parseCommand;
    
@@ -41,6 +41,7 @@ package body MainComms is
    
    function getLastCommand(Tag: Command_type) return Command is
    begin
+      Last_Command_Array(Tag).NewData := False;
       return Last_Command_Array(Tag);
    end getLastCommand;
    

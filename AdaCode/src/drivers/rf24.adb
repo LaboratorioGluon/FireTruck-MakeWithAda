@@ -337,9 +337,6 @@ package body RF24 is
          delay 0.1;
       end loop;
 
-        
-      
-      
       This.NSS.Clear;
            
       This.SPI_Port.all.Transmit_Receive(read_payload_cmd,
@@ -350,31 +347,6 @@ package body RF24 is
       
       This.NSS.Set;
       
-      
-      
---        This.NSS.Clear;
---        send2(0) := 16#17#;
---        send2(0) := 16#FF#;
---        This.SPI_Port.all.Transmit_Receive(send2,
---                                            recv2,
---                                            Positive(2));
---        Console.putLine("Status: " & recv2(0)'Img);
---        Console.putLine("FIFO Status: " & recv2(1)'Img);
---        This.NSS.Set;
---        
---        This.NSS.Clear;
---        send2(0) := 16#27#;
---        send2(0) := 16#00#;
---        This.SPI_Port.all.Transmit_Receive(send2,
---                                            recv2,
---                                            Positive(2));
---        Console.putLine("Status: " & recv2(0)'Img);
---        Console.putLine("Status 2?: " & recv2(1)'Img);
---        This.NSS.Set;
-      
-      
-      --Console.putChar(ASCII.CR);
-
       return Hal.UInt8(0);
    end ReadWaitBlocking;
    
