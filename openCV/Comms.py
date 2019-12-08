@@ -9,7 +9,7 @@ SET_SERVO = 3
 class Comms:
 
     def __init__(self):
-        self.ser = serial.Serial('\\COM5', 19200) 
+        self.ser = serial.Serial('\\COM3', 19200) 
         self.ser.write(self.getCmd(SET_SPEED, [20]))
         
     def close(self):
@@ -23,8 +23,11 @@ class Comms:
         self.ser.write(self.getCmd(tag, data))
         
     def setDirection(self, dir):
-       self.ser.write(self.getCmd(SET_SPEED, [18]))
+       self.ser.write(self.getCmd(SET_SPEED, [40]))
        self.ser.write(self.getCmd(SET_DIRECTION, [dir]))
+       
+    def setServos(self, hor, ver):
+       self.ser.write(self.getCmd(SET_SERVO, [int(hor), int(ver)]))
           
 if __name__ == "__main__":
     print('Test de comms')
@@ -36,4 +39,4 @@ if __name__ == "__main__":
         Com.sendCmd(datas[0], datas[1:])
     Com.close()
     
-    hacer_algo()
+    

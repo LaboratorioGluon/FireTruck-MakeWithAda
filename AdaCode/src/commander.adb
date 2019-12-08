@@ -29,12 +29,12 @@ package body Commander is
       function isValidDeg(value: in HAL.UInt8) return Boolean is
          function toInt is new Unchecked_Conversion
            (Source => HAL.UInt8,
-            Target => Integer);
-         LocalInt : Integer := 0;
+            Target => Servo.degree);
+         LocalInt : Servo.degree := 0;
       begin
          LocalInt := toInt(value);
-         if LocalInt > Integer(Servo.degree'First) and
-           LocalInt < Integer(Servo.degree'Last) then
+         if LocalInt >= Servo.degree'First and
+           LocalInt <= Servo.degree'Last then
             return True;
          else
             return False;
@@ -93,8 +93,8 @@ package body Commander is
          return ReturnStatus;
       end if;
 
-      if Cmd.Data(0) > HAL.Uint8(CarController.Speed'First) and
-        Cmd.Data(0) < HAL.Uint8(CarController.Speed'Last) then
+      if Cmd.Data(0) >= HAL.Uint8(CarController.Speed'First) and
+        Cmd.Data(0) <= HAL.Uint8(CarController.Speed'Last) then
          LocalSpeed := CarController.Speed(Cmd.Data(0));
          CarController.setSpeed(LocalSpeed);
          ReturnStatus := OK;
@@ -129,7 +129,7 @@ package body Commander is
          return ReturnStatus;
       end if;
 
-      if Cmd.Data(0) > Hal.Uint8(CarController.Direction'Pos(CarController.NONE)) and
+      if Cmd.Data(0) >= Hal.Uint8(CarController.Direction'Pos(CarController.NONE)) and
         Cmd.Data(0) < Hal.Uint8(CarController.Direction'Pos(CarController.DIR_END)) then
          LocalDir := CarController.Direction'Val(Cmd.Data(0));
          CarController.setDirection(LocalDir);
@@ -140,5 +140,41 @@ package body Commander is
          return ReturnStatus;
       end if;           
    end CommandCarControllerDir;
+   
+   function CommandState( Cmd: in MainComms.Command;
+                          State: out MainState.State)
+                         return CommandStatus is
+      
+      use type Hal.Uint8;
+      use type MainComms.Command_type;
+      use type MainComms.Len_type;
+      ExceptedLen : constant MainComms.Len_type := 1;
+      ExpectedTag : constant MainComms.Command_type := MainComms.SET_MAIN_STATUS;
+
+      ReturnStatus: CommandStatus := FAILED;
+      
+   begin
+      -- Check that the TAG is correct
+      if Cmd.Tag /= ExpectedTag then
+         ReturnStatus := WRONG_TAG;
+         return ReturnStatus;
+      end if;
+
+      -- Check the data len
+      if Cmd.Len /= ExceptedLen then
+         ReturnStatus := WRONG_LEN;
+         return ReturnStatus;
+      end if;
+      
+      if Cmd.Data(0) >= Hal.Uint8(MainState.State'Pos(MainState.OFF)) and
+        Cmd.Data(0) < Hal.Uint8(MainState.State'Pos(MainState.ENDING)) then
+         State := MainState.State'Val(Cmd.Data(0));
+         ReturnStatus := OK;
+      else
+         ReturnStatus := ARGS_NOT_VALID;
+      end if;
+      return ReturnStatus;
+      
+   end CommandState;
 
 end Commander;

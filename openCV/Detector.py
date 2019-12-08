@@ -8,12 +8,16 @@ class Detector:
     #hsv_azul = ((100,197,255),(88,120,180))
     #hsv_verde = ( (69,244,255), (42,42,154))
     
-    hsv_verde = ((49,100,130),(102,255,255))    
-    hsv_azul  = ((111,79,130),(149,208,255))
-    hsv_rojo  = ((162,153,61),(193,255,178))
+#    hsv_verde = ((60,19,231),(139,76,255))    
+#    hsv_azul  = ((90,91,223),(146,190,255))
+#    hsv_rojo  = ((9,9,164),(69,188,255))
+
+    hsv_verde = ((49,79,168),(134,151,255))
+    hsv_azul  = ((81,146,206),(157,255,255))
+    hsv_rojo  = ((81,49,220),(113,139,255))
     paint_result = False
     
-    object = np.array([[0,0,0],[5,0,0],[0,7,0],[5,7,0]], dtype=np.float64)
+    object = np.array([[0,0,17],[8,0,17],[0,9,17],[8,9,17]], dtype=np.float64)
     
     is_tester_initialized = False
     
@@ -24,16 +28,36 @@ class Detector:
                        [0     ,0      ,  1]],dtype=np.float64)
     # 
     modo = "normal"
+    mover = False
+    back = None
+    backSub = None
+    backmask = None
+    hasBack = False
+    move = False
+    pump = False
     
+    def setMove(self, ):
+        if self.move == True:
+            self.move = False   
+            self.comm.setDirection(0)            
+        else:
+            self.move = True
     def __init__(self):
     
         self.comm = Comms.Comms()
+        self.comm.setServos(0,0)
         self.Inv_Cam_Matrix = np.linalg.inv(self.Cam_Matrix)
 
         pass
        
     def setMode(self, modo):
         self.modo = modo
+        
+    def setPump(self):
+        if pump == False:
+            pump = True
+        else:
+            pump = False
        
     # Main program loop
     def Loop(self, img):
@@ -44,6 +68,9 @@ class Detector:
         elif self.modo == "simple":
             self.Simple(img)
             
+    def setBack(self, backImg):
+        self.back = backImg
+        self.hasBack = True
             
     def calculate_XYZ(self,u,v, rvec, tvec):
         """
@@ -80,15 +107,67 @@ class Detector:
         
         # Detect the items in the img
     def Detect(self, img):
-        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
-        mask_azul = cv2.inRange(img_hsv, self.hsv_azul[0], self.hsv_azul[1])
-        mask_verde = cv2.inRange(img_hsv, self.hsv_verde[0], self.hsv_verde[1])
-        mask_rojo = cv2.inRange(img_hsv, self.hsv_rojo[0], self.hsv_rojo[1])
+        height = img.shape[0]
+        width = img.shape[1]
+        if not self.hasBack:
         
+            #cv2.putText(img,"Derecha", (10,30), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
+            cv2.imshow("Detecciones",img)
+            
+            return
+        else:
+            img_ = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            back_ = cv2.cvtColor(self.back, cv2.COLOR_BGR2GRAY)
+            diff = cv2.absdiff(img_,back_);
+            ret, thresh1 = cv2.threshold(diff, 15, 255, cv2.THRESH_BINARY) 
+            
+            cv2.imshow("Resta1",thresh1)
+            thresh1 = self.FilterMask(thresh1)
+            kernel = np.ones((10,10), np.uint8)
+            img_dilation = cv2.dilate(thresh1, kernel, iterations=4)
+            img_erosion = cv2.erode(img_dilation, kernel, iterations=2)
+            cv2.imshow("Resta",img_erosion)
+            
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+            dilated = cv2.dilate(img_erosion.copy(), kernel)
+            cnts = cv2.findContours(dilated, cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE)[-2]
+            #cnts = imutils.grab_contours(cnts)
+            #cnts = imutils.grab_contours(contours)
+            #M = cv.moments(cnts)
+            mask_target = np.zeros(shape=[height, width, 1], dtype=np.uint8)
+            mask_truck = np.zeros(shape=[height, width, 1], dtype=np.uint8)
+            if len(cnts) >= 2:
+                """for cnt in cnts:
+                    area = cv2.contourArea(cnt)
+                    print(area)"""
+                cntsSorted = sorted(cnts, key=lambda x: cv2.contourArea(x), reverse=True)
+                cv2.drawContours(mask_truck, [cntsSorted[0]], -1, 255, -1)
+                cv2.drawContours(mask_target, [cntsSorted[1]], -1, 255, -1) 
+        
+        img_masked_truck = cv2.bitwise_and(img, img, mask=mask_truck)
+        img_masked_target= cv2.bitwise_and(img, img, mask=mask_target)
+        
+        cv2.imshow("mask_target", img_masked_target)
+        cv2.imshow("mask_truck", img_masked_truck)
+        img_hsv_truck = cv2.cvtColor(img_masked_truck, cv2.COLOR_BGR2HSV) 
+        img_hsv_target = cv2.cvtColor(img_masked_target, cv2.COLOR_BGR2HSV) 
+        
+        img_hsv_truck = cv2.GaussianBlur(img_hsv_truck, (13, 13), 0)
+        img_hsv_target = cv2.GaussianBlur(img_hsv_target, (13, 13), 0)
+        mask_azul = cv2.inRange(img_hsv_truck, self.hsv_azul[0], self.hsv_azul[1])
+        mask_verde = cv2.inRange(img_hsv_truck, self.hsv_verde[0], self.hsv_verde[1])
+        mask_rojo = cv2.inRange(img_hsv_target, self.hsv_rojo[0], self.hsv_rojo[1])
+        
+
+        """
         mask_azul  = self.FilterMask(mask_azul)
         mask_verde = self.FilterMask(mask_verde)
         mask_rojo  = self.FilterMask(mask_rojo)
-        
+        """
+        cv2.imshow("mascaraV", mask_verde)
+        cv2.imshow("mascaraA", mask_azul)
+        cv2.imshow("mascaraR", mask_rojo)
         azul_ellipses = self.getEllipse(mask_azul)
         verde_ellipses = self.getEllipse(mask_verde)
         rojo_ellipses = self.getEllipse(mask_rojo)
@@ -102,7 +181,7 @@ class Detector:
                     centros.append([cAzul[0], cAzul[1]])
                     centros_a.append(cAzul)
                     if not cAzul == -1:
-                        cv2.ellipse(img, eAzul, (255,0,0), 2)
+                        #cv2.ellipse(img, eAzul, (255,0,0), 2)
                         cv2.circle(img, cAzul, 5, (0, 0, 255), -1)
 
         if len(verde_ellipses) > 0:
@@ -111,7 +190,7 @@ class Detector:
                     centros.append([cVerde[0], cVerde[1]])
                     centros_v.append(cVerde)
                     if not cVerde == -1:
-                        cv2.ellipse(img, eVerde, (0,255,0), 2)
+                        #cv2.ellipse(img, eVerde, (0,255,255), 2)
                         cv2.circle(img, cVerde, 5, (0, 0, 255), -1)
             
         objetivo = None
@@ -153,22 +232,62 @@ class Detector:
                      (int(centros_v[0][0] + v[0]/2 + v_orto[0]), int(centros_v[0][1] + v[1]/2 + v_orto[1])),
                      (255,0,0),2)
             """
-            ret, rvec, tvec = cv2.solvePnP(self.object,
+            try:
+                ret, rvec, tvec = cv2.solvePnP(self.object,
                          np.array(centros_ordenados, dtype=np.float64),
                          self.Cam_Matrix,
                          self.dist)
-            #print(tvec)
-            #print(rvec)
-            if not objetivo == None:
-                print(objetivo)
-                print(self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec))
+                         
+                if not objetivo == None:
+                    print("=====================")
+                    print(objetivo)
+                    print(self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec))
+                    X,Y,Z = self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec)
+                    cv2.putText(img,str(X), (10,80), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
+                    dist = math.sqrt(X*X+ Y*Y + Z*Z)
+                    cv2.putText(img,str(dist), (10,120), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
+                    if self.move:
+                        if dist > 100:
+                            if X > 10 :
+                                self.comm.setDirection(2)
+                                print("Derecha!!!!!!!!!!")
+                                cv2.putText(img,"Derecha", (10,30), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
+                            elif X < -10 :
+                                self.comm.setDirection(1)
+                                print("Izquierda############")
+                                cv2.putText(img,"IZquierda", (10,30), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)     
+                            elif dist > 100:
+                                cv2.putText(img,"Recto", (10,30), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)   
+                                print("Recto!")
+                                self.comm.setDirection(3)
+                        else:
+                            cv2.putText(img,"Cerca", (10,30), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)   
+                            print("Cerca!")
+                            self.comm.setDirection(0)
+                            ejeX = 0
+                            ejeX = int(math.acos(Y/dist)*180/3.1415)
+                            if X > 0:
+                                ejeX = -ejeX
+                            cv2.putText(img,"Servo" + str(ejeX), (10,160), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)   
+                            if ejeX > -20 and ejeX < 20:
+                                print(ejeX)
+                                self.comm.setServos(ejeX,0)
+                            #else:
+                            #    self.comm.setServos(0,0)
+                        
+            except:
+                print("Exception!") 
+                self.comm.setDirection(0)
+                pass
+                
         cv2.imshow("Detecciones", img)
     
     # Filter the mask
     def FilterMask(self, mask):
-        kernel = np.ones((10,10), np.uint8)
-        img_dilation = cv2.dilate(mask, kernel, iterations=5)
-        img_erosion = cv2.erode(img_dilation, kernel, iterations=5)
+        kernel = np.ones((3,3), np.uint8)
+        
+        img_erosion = cv2.erode(mask, kernel, iterations=1)
+        img_dilation = cv2.dilate(img_erosion, kernel, iterations=1)
         return img_erosion
 
     def Simple(self, img):
@@ -272,6 +391,7 @@ class Detector:
         lower_limit = np.array([hl,sl,vl], dtype=np.uint8)
         upper_limit = np.array([hh,sh,vh], dtype=np.uint8)  
         
+
         mask = cv2.inRange(img_hsv, lower_limit, upper_limit)
         
         cv2.imshow("Test mask", mask)
@@ -290,13 +410,24 @@ class Detector:
         M = cv2.moments(mask)
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE)
+        
+            
         cnts = imutils.grab_contours(cnts)
         center = None
         res = []
+        indice = 0
+        
         if len(cnts) > 0:
-            for c in cnts:
+            if len(cnts) == 1:
+                indice = 1
+            else:
+                indice = 2
+            cntsSorted = sorted(cnts, key=lambda x: cv2.contourArea(x), reverse=True)
+            for c in cntsSorted[0:indice]:
             #c = max(cnts, key=cv2.contourArea)
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
+                res.append(((int(x),int(y)), radius))
+                continue
                 try:
                     ellip = cv2.fitEllipse(c)
                 except:
@@ -309,7 +440,8 @@ class Detector:
                     else:
                         #return (-1, -1)
                         pass
-                    if radius > 1:
+
+                    if radius > 0:
                         res.append( (center, ellip) )
                     else:
                         pass

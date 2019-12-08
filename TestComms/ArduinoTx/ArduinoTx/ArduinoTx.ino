@@ -26,22 +26,6 @@ union {
   uint8_t raw[32];
 } command;
 
-char receivedChar;
-
-char cmd[20] ="";
-int cmd_len = 0;
-
-uint8_t isSend;
-
-union {
-  struct __attribute__((packed)) {
-    uint8_t tag;
-    uint8_t len;
-    uint8_t data[30];
-  } packet;
-  uint8_t raw[32];
-} command;
-
 
 void setup() {
   radio.begin();
@@ -94,10 +78,5 @@ void loop() {
           isSend = false;
         }
     }
-  
-   //delay(1000);
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 }

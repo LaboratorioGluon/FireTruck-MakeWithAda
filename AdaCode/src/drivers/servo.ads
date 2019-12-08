@@ -6,6 +6,7 @@ with STM32.Device;
 package Servo is
    
    type degree is range -90 .. 90;
+   for degree'Size use 8;
 
    type Servo is 
      tagged limited record

@@ -1,5 +1,6 @@
 with Servo;
 with MainComms;
+with MainState;
 
 package Commander is
 
@@ -20,4 +21,8 @@ package Commander is
    function CommandCarControllerDir( Cmd: in MainComms.Command)
                                     return CommandStatus;
 
+   function CommandState( Cmd: in MainComms.Command;
+                          State: out MainState.State)
+                         return CommandStatus;
+   
 end Commander;

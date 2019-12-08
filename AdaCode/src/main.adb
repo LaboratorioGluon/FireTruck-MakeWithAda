@@ -6,7 +6,6 @@ with STM32.Board; use STM32.Board;
 with HAL;
 with Console;
 with rf24;
-with STM32.SPI;
 with STM32.Timers;
 
 with MainComms;
@@ -14,11 +13,14 @@ with CarController;
 with Servo;
 with Unchecked_Conversion;
 with Commander;
+with MainState;
 
 procedure Main is
    use type Ada.Real_Time.Time;
    use type HAL.Uint8;
    use type Servo.degree;
+   use type MainState.State;
+   
    Next_execution: Ada.Real_Time.Time;
    Period: constant Ada.Real_Time.Time_Span:= Ada.Real_Time.To_Time_Span(0.5);
 
@@ -60,6 +62,7 @@ begin
    PumpPinNot.Clear;
    
    
+   -- Servos
    servo1.Init(Pin            => STM32.Device.PB5,
                Alternate_func => STM32.Device.GPIO_AF_TIM3_2,
                Servo_Timer    => STM32.Device.Timer_3'access,
@@ -69,8 +72,8 @@ begin
                          Top    => 2500,
                          Bottom => 600);
    
-   servo1.setLimits(Max_Degree => 45,
-                    Min_Degree => -30);
+   servo1.setLimits(Max_Degree => 90,
+                    Min_Degree => -90);
    
    servo2.Init(Pin            => STM32.Device.PB4,
                Alternate_func => STM32.Device.GPIO_AF_TIM3_2,
@@ -81,68 +84,11 @@ begin
                          Top    => 2600,
                          Bottom => 600);
    
-   servo2.setLimits(Max_Degree => 15,
-                    Min_Degree => -30);
+   servo2.setLimits(Max_Degree => 90,
+                    Min_Degree => -90);
    
-
---     declare
---        Arg       : Long_Float := 0.0;
---        Value     : Integer;
---        Increment : constant Long_Float := 0.1;
---        Step : Integer := 400;
---        Last_Step : Integer := -180;
---        --  The Increment value controls the rate at which the brightness
---        --  increases and decreases. The value is more or less arbitrary, but
---        --  note that the effect of compiler optimization is observable.
---     begin
---        loop
---  --           if STM32.Device.PA0.Set then
---  --              --Value := Integer (180.0*Sine (Arg));
---  --              Value := -180;
---  --           else
---  --              Value := 180;
---  --           end if;
---  
---           if STM32.Device.PA0.Set and Last_Step = Step then
---              if Step /= 0 then
---                 Step := 0;
---              else
---                 Step := 1;
---              end if;
---              STM32.GPIO.Set(Green_LED);
---           end if;
---           
---           if not STM32.Device.PA0.Set and Last_Step /= Step then
---              Last_Step := Step;
---              STM32.GPIO.Clear(Green_LED);
---           end if;
---           
---           if Step > 2700 then
---              Step := 400;
---           end if;
---           Value := Integer (90.0*Sine (Arg));
---           if Step = 0 then
---              servo1.setValue(Integer(servo1.calibration_zero));
---           else
---              servo1.setDegrees(Servo.degree(Value));
---           end if;
---           
---           Value := Integer (90.0*Sine (Arg*2.0));
---           if Step = 0 then
---              servo2.setValue(Integer(servo2.calibration_zero));
---           else
---              servo2.setDegrees(Servo.degree(Value));
---           end if;
---           --servo1.setValue(400);
---           Arg := Arg + Increment;
---           
---           delay 0.1;
---        end loop;
---     end;
---        
-
    
-   -- PWM
+   --- Car controller
    CarController.InitLeftMotor(LEFT_FWD     => STM32.Device.PE0,
                                LEFT_BCK     => STM32.Device.PE2,
                                LEFT_PWM     => STM32.Device.PB8,
@@ -157,40 +103,19 @@ begin
                                 RIGHT_Channel => STM32.Timers.Channel_4,
                                 RIGHT_Af      => STM32.Device.GPIO_AF_TIM4_2);
 
---     STM32.PWM.Configure_PWM_Timer(Generator => STM32.Device.Timer_4'Access,
---                                   Frequency => 50_000);
---
---
---     pwm_mod.Attach_PWM_Channel(Generator => STM32.Device.Timer_4'Access,
---                                Channel   => STM32.Timers.Channel_3,
---                                Point     => STM32.Device.PB8,
---                                PWM_AF    => STM32.Device.GPIO_AF_TIM4_2);
---
---
---     pwm_mod.Enable_Output;
-   --CarController.UpdateMotors;
-   -- end PWM
+   --- Console for debug
    Console.init(9600);
 
+   
+   -- Comms with RF24
    RF24Dev.Init(MOSI_Pin => STM32.Device.PB15,
                MISO_Pin => STM32.Device.PB14,
                NSS_Pin  => STM32.Device.PB12,
                CLK_Pin  => STM32.Device.PB13,
                CE_Pin   => STM32.Device.PB11);
 
-   if STM32.Device.SPI_2.Enabled and not STM32.Device.SPI_2.Mode_Fault_Indicated then
-      Console.putLine("Bien!");
-   end if;
-
-
-  
-
-   STM32.Device.Enable_Clock (STM32.Device.PD10);
-   STM32.GPIO.Configure_IO (STM32.Device.PD10,
-                            (Mode_In,
-                             Resistors   => Floating
-                            ));
-
+   
+   -- Init comms
    RF24Dev.powerUp;
    delay 0.01;
 
@@ -203,33 +128,17 @@ begin
       STM32.GPIO.Set(Red_LED);
    end if;
 
+   
+   ------------------------
+   --- Main Loop
+   ------------------------
    Next_execution:= Ada.Real_Time.Clock + Period;
    loop
-
---        if STM32.Device.PA0.Set then
---           STM32.GPIO.Set(Orange_LED);
---           STM32.GPIO.Clear(PumpPin);
---           STM32.GPIO.Set(PumpPinNot);
---        else
---           STM32.GPIO.Set(PumpPin);
---           STM32.GPIO.Clear(PumpPinNot);
---           STM32.GPIO.Clear (Orange_LED);
---        end if;
-
-      MainComms.updateCommands(RF24Dev);
-
---        if MainComms.getLastCommand(Tag => MainComms.TEST_LED).Data(0) = 1 then
---           STM32.GPIO.Set(Green_LED);
---        else
---           STM32.GPIO.Clear(Green_LED);
---        end if;
---        
---        CarController.setDirection(
---                                   CarController.Direction'Val(
---                                     MainComms.getLastCommand(Tag => MainComms.SET_DIRECTION).Data(0))
---                                  );
---        CarController.setSpeed(CarController.Speed(MainComms.getLastCommand(Tag => MainComms.SET_SPEED).Data(0)));
       
+      -- Get all the new data from Comms      
+      MainComms.updateCommands(RF24Dev);
+      
+      -- Update the system according to Commands.
       for cmd in MainComms.Command_type loop
          last_command := MainComms.getLastCommand(cmd);
          case last_command.Tag is
@@ -248,13 +157,17 @@ begin
                else
                   PumpPinNot.set;
                end if;
+--              when MainComms.SET_MAIN_STATUS =>
+--                 last_command_status := Commander.CommandState(Cmd   => last_command,
+--                                                               State => MainState.currentState);
             when others => null;
          end case;
       end loop;
---        
---        servo1.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(0)));
---        servo2.setDegrees(toDeg(MainComms.getLastCommand(Tag =>  MainComms.SET_SERVO).Data(1)));
---        STM32.GPIO.Set(Blue_LED);
+      
+      if MainState.currentState = MainState.IN_RANGE then
+         null;
+      end if;
+
 
    end loop;
 end Main;
