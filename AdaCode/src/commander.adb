@@ -1,6 +1,8 @@
 with Unchecked_Conversion;
 with HAL;
 with CarController;
+with Aim;
+with STM32.Board;
 
 package body Commander is
   
@@ -176,5 +178,77 @@ package body Commander is
       return ReturnStatus;
       
    end CommandState;
+   
+   function CommandAim(Cmd : in MainComms.Command;
+                       SerH  : in out Servo.Servo;
+                       SerV  : in out Servo.Servo)  
+                       return CommandStatus is
+      use type Servo.degree;
+      use type MainComms.Command_type;
+      use type MainComms.Len_type;
+      use type HAL.UInt8;
+      
+      ExceptedLen : constant MainComms.Len_type := 2;
+      ExpectedTag : constant MainComms.Command_type := MainComms.INFO_TARGET;
+      
+      ReturnStatus: CommandStatus := FAILED;
+      
+      function toDeg is new Unchecked_Conversion
+        (Source => HAL.UInt8,
+         Target => Servo.degree);
+
+      function isValidDeg(value: in HAL.UInt8) return Boolean is
+         function toInt is new Unchecked_Conversion
+           (Source => HAL.UInt8,
+            Target => Servo.degree);
+         LocalInt : Servo.degree := 0;
+      begin
+         LocalInt := toInt(value);
+         if LocalInt >= Servo.degree'First and
+           LocalInt <= Servo.degree'Last then
+            return True;
+         else
+            return False;
+         end if;
+      end isValidDeg;
+      
+   begin
+      
+      if Cmd.Tag /= ExpectedTag then
+         ReturnStatus := WRONG_TAG;
+         return ReturnStatus;
+      end if;
+      
+      -- Check the data len
+      if Cmd.Len /= ExceptedLen then
+         ReturnStatus := WRONG_LEN;
+         return ReturnStatus;
+      end if;
+      
+      if isValidDeg(Cmd.Data(0)) then
+         Aim.Curernt_Angle := toDeg(Cmd.Data(0));
+      else
+         Aim.Curernt_Angle := 0;
+         ReturnStatus := ARGS_NOT_VALID;
+      end if;
+      
+      if Cmd.Data(1) >= Hal.UInt8( Aim.Distance'First ) and
+        Cmd.Data(1) <= Hal.UInt8( Aim.Distance'Last ) then
+         Aim.Current_Distance := Aim.Distance(Cmd.Data(1));
+      else
+         Aim.Current_Distance := 0;
+         ReturnStatus := ARGS_NOT_VALID;
+      end if;
+      
+      if ReturnStatus /= ARGS_NOT_VALID then
+         
+         Aim.Aim(Angle    => Aim.Curernt_Angle,
+                 Dist     => Aim.Current_Distance,
+                 ServoH   => SerH,
+                 ServoV   => SerV);
+      end if;
+                                              
+      return ReturnStatus;
+   end CommandAim;
 
 end Commander;

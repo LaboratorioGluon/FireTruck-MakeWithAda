@@ -41,8 +41,13 @@ package body MainComms is
    
    function getLastCommand(Tag: Command_type) return Command is
    begin
-      Last_Command_Array(Tag).NewData := False;
+      --Last_Command_Array(Tag).NewData := False;
       return Last_Command_Array(Tag);
    end getLastCommand;
+   
+   procedure endCommand(Tag: Command_type) is
+   begin
+      Last_Command_Array(Tag).NewData := False;
+   end endCommand;
    
 end MainComms;

@@ -3,6 +3,9 @@ import numpy as np
 import imutils
 import Comms
 import math
+
+import traceback
+
 class Detector:
     
     #hsv_azul = ((100,197,255),(88,120,180))
@@ -12,9 +15,9 @@ class Detector:
 #    hsv_azul  = ((90,91,223),(146,190,255))
 #    hsv_rojo  = ((9,9,164),(69,188,255))
 
-    hsv_verde = ((49,79,168),(134,151,255))
-    hsv_azul  = ((81,146,206),(157,255,255))
-    hsv_rojo  = ((81,49,220),(113,139,255))
+    hsv_verde = ((49,42,204),(93,255,255))
+    hsv_azul  = ((97,104,204),(130,255,255))
+    hsv_rojo  = ((20,107,83),(62,255,255))
     paint_result = False
     
     object = np.array([[0,0,17],[8,0,17],[0,9,17],[8,9,17]], dtype=np.float64)
@@ -36,6 +39,10 @@ class Detector:
     move = False
     pump = False
     
+    last4X = [0]
+    last4Y = [0]
+    
+    
     def setMove(self, ):
         if self.move == True:
             self.move = False   
@@ -43,7 +50,8 @@ class Detector:
         else:
             self.move = True
     def __init__(self):
-    
+        self.last4X = [0]
+        self.last4Y = [0]
         self.comm = Comms.Comms()
         self.comm.setServos(0,0)
         self.Inv_Cam_Matrix = np.linalg.inv(self.Cam_Matrix)
@@ -232,6 +240,7 @@ class Detector:
                      (int(centros_v[0][0] + v[0]/2 + v_orto[0]), int(centros_v[0][1] + v[1]/2 + v_orto[1])),
                      (255,0,0),2)
             """
+            print(self.last4X)
             try:
                 ret, rvec, tvec = cv2.solvePnP(self.object,
                          np.array(centros_ordenados, dtype=np.float64),
@@ -243,11 +252,24 @@ class Detector:
                     print(objetivo)
                     print(self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec))
                     X,Y,Z = self.calculate_XYZ(objetivo[0][0], objetivo[0][1], rvec, tvec)
+                    """
+                    print(self.last4X)
+                    if len(self.last4X) < 4:
+                        self.last4X.append(X)
+                        self.last4Y.append(Y)
+                        
+                    else:
+                        self.last4X = self.last4X[1:].append(X)
+                        self.last4Y = self.last4Y[1:].append(X)
+                    """    
+                    #X = np.mean(self.last4X)
+                    #Y = np.mean(self.last4Y)
+                    
                     cv2.putText(img,str(X), (10,80), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
                     dist = math.sqrt(X*X+ Y*Y + Z*Z)
                     cv2.putText(img,str(dist), (10,120), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)    
                     if self.move:
-                        if dist > 100:
+                        if dist > 90:
                             if X > 10 :
                                 self.comm.setDirection(2)
                                 print("Derecha!!!!!!!!!!")
@@ -271,11 +293,15 @@ class Detector:
                             cv2.putText(img,"Servo" + str(ejeX), (10,160), cv2.FONT_HERSHEY_SIMPLEX , 0.7, (255,255,255),2)   
                             if ejeX > -20 and ejeX < 20:
                                 print(ejeX)
-                                self.comm.setServos(ejeX,0)
+                                #self.comm.setServos(ejeX,0)
+                                
+                                self.comm.setTarget(ejeX, dist)
                             #else:
                             #    self.comm.setServos(0,0)
                         
-            except:
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
                 print("Exception!") 
                 self.comm.setDirection(0)
                 pass

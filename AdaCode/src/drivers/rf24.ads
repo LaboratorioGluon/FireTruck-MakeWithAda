@@ -4,11 +4,22 @@ with HAL;
 with HAL.GPIO;
 with Unchecked_Conversion;
 with System;
+
+-------------------------------------------------
+-- Package to control an nrf24l01 module
+-------------------------------------------------
 package RF24 is
    
+   -------------------------------------------------
+   -- Package globals
+   -------------------------------------------------
    pipe: HAL.UInt64 := 16#DEADBEEF00#;
    InitOK : Boolean := True;
    
+
+   -------------------------------------------------
+   -- Read/Write command records
+   -------------------------------------------------
    type Read_Command is record
       Register: HAL.UInt5 := 0;
       Fixed: HAL.UInt3 := 0;
@@ -38,7 +49,9 @@ package RF24 is
      Unchecked_Conversion(Write_Command, HAL.UInt8 );
    
       
-   
+   -------------------------------------------------
+   -- Registers definitions
+   -------------------------------------------------   
    type Status_Register is record
       TX_FULL        : Boolean := False;
       RX_P_NO        : HAL.UInt3 := 0;
@@ -122,6 +135,10 @@ package RF24 is
      Unchecked_Conversion(FIFO_Status_Register, HAL.UInt8 );
    
    
+   -------------------------------------------------
+   -- RF24 device
+   -------------------------------------------------
+
    type RF24_Device( SPI_Port : access STM32.SPI.SPI_Port) is 
      tagged limited record
       readBuffer: STM32.SPI.UInt8_Buffer(0 .. 32) := (others => 0);
@@ -136,10 +153,15 @@ package RF24 is
    end record;
    
 
+   -------------------------------------------------
+   -- 
    procedure powerUp(This: in out RF24_Device);
    
    procedure setRxMode(This: in out RF24_Device);
 
+   -------------------------------------------------
+   -- Init the SPI and starts the nrf24l01
+   -------------------------------------------------
    procedure Init(This: in out RF24_Device;
                   MOSI_Pin: in STM32.GPIO.GPIO_Point;
                   MISO_Pin: in STM32.GPIO.GPIO_Point;
@@ -170,8 +192,9 @@ package RF24 is
    
    
    
-   
-   
+   -------------------------------------------------
+   -- RF24 registers
+   -------------------------------------------------
    CONFIG :      HAL.Uint5 := 16#00#;
    EN_AA :       HAL.Uint5 := 16#01#;
    EN_RXADDR :   HAL.Uint5 := 16#02#;

@@ -25,4 +25,10 @@ package Commander is
                           State: out MainState.State)
                          return CommandStatus;
    
+   function CommandAim(Cmd : in MainComms.Command;
+                       SerH  : in out Servo.Servo;
+                       SerV  : in out Servo.Servo)
+     return CommandStatus;
+                       
+   
 end Commander;

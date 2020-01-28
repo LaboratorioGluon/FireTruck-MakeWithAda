@@ -14,6 +14,7 @@ with Servo;
 with Unchecked_Conversion;
 with Commander;
 with MainState;
+with Aim;
 
 procedure Main is
    use type Ada.Real_Time.Time;
@@ -141,8 +142,12 @@ begin
       -- Update the system according to Commands.
       for cmd in MainComms.Command_type loop
          last_command := MainComms.getLastCommand(cmd);
-         case last_command.Tag is
-            when MainComms.TEST_LED => null;
+         
+         if last_command.NewData then
+            
+            case last_command.Tag is
+            when MainComms.TEST_LED => 
+               Green_LED.Toggle;
             when MainComms.SET_DIRECTION => 
                last_command_status := Commander.CommandCarControllerDir(last_command);
             when MainComms.SET_SPEED => 
@@ -157,17 +162,26 @@ begin
                else
                   PumpPinNot.set;
                end if;
---              when MainComms.SET_MAIN_STATUS =>
---                 last_command_status := Commander.CommandState(Cmd   => last_command,
---                                                               State => MainState.currentState);
+               --              when MainComms.SET_MAIN_STATUS =>
+               --                 last_command_status := Commander.CommandState(Cmd   => last_command,
+               --                                                               State => MainState.currentState);
+            when MainComms.INFO_TARGET =>
+               last_command_status := Commander.CommandAim(last_command,
+                                                           servo1,
+                                                           servo2);
             when others => null;
-         end case;
+            end case;
+            MainComms.endCommand(last_command.Tag);
+         end if;
       end loop;
       
-      if MainState.currentState = MainState.IN_RANGE then
-         null;
+      if Aim.Current_Achieved = True then
+         PumpPinNot.Set;
+         delay 1.0;
+         PumpPinNot.Clear;
+         delay 100.0;
+         
       end if;
-
-
+      
    end loop;
 end Main;

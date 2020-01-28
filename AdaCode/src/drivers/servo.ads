@@ -19,6 +19,10 @@ package Servo is
    end record;
 
    
+   ----------------------------------------------------------
+   -- Initialize the modules for the Servo communication
+   -- Mainly PWM and Timers.
+   ----------------------------------------------------------
    procedure Init( This: in out Servo;
                    Pin: STM32.GPIO.GPIO_Point;
                    Alternate_func: STM32.GPIO_Alternate_Function;
@@ -28,7 +32,8 @@ package Servo is
 
    ----------------------------------------------------------
    -- If the Servo is calibrated, this function calculates
-   -- the value of the PWM signal to get the Degrees
+   -- the value of the PWM signal to get the Degrees.
+   -- It takes into account the limits and the calibration
    -----------------------------------------------------------
    procedure setDegrees(This : in out Servo;
                         Degrees: in degree);
@@ -40,11 +45,23 @@ package Servo is
    procedure setValue(This: in out Servo;
                       Value: in Integer);
    
+   ----------------------------------------------------------
+   -- This procedure is used to calibrate the servos when they
+   -- do not work with the standard:
+   -- - 1000ms => -90 degrees
+   -- - 1500ms => 0 degrees
+   -- - 2000ms => 90 degrees
+   ---------------------------------------------------------- 
    procedure setCalibration(This: in out Servo;
                             Zero: in STM32.PWM.Microseconds;
                             Top : in STM32.PWM.Microseconds;
                             Bottom: in STM32.PWM.Microseconds);
    
+   ----------------------------------------------------------
+   -- Set the limits of the servo movement so if the value
+   -- of the servo in degrees is out of this range, the servo
+   -- will move to the limit.
+   ---------------------------------------------------------- 
    procedure setLimits(This: in out Servo;
                        Max_Degree : in Degree;
                        Min_Degree : in Degree);
