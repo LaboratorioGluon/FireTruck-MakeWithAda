@@ -1,3 +1,31 @@
+#Project Autonomous FireTruck (AFT)
+
+This repo contains the files for the Autonomous Firetruck contest.
+
+- The _AdaCore_ folder contains the files for the Embedded software, written in Ada, for the stm32f407disc.
+- The _openCV_ one contains the code of the openCV algorithm and the Calibration script.
+- The _TestComms_ contains the code for the arduino's in order to transmit over the nRF24L01 the data sent from the PC
+
+# How to use it
+
+In order to replicate this project the following steps shall be followed:
+- Assemble the hardware following the previous notes
+- Flash the Embedded AdaCore source in the stm32F407 
+- Flash the Arduino Code to send data over the WiFi
+- Adapt the openCV Comms script to open the correct Serial port.
+- Setup the webcam and connect to the PC. 
+- Launch the "ApagaFuegos" in the openCV folder
+- Once the scenario is clear, press "b" to take a picture of the background
+- Add the truck and the fire to the scenario
+- Press "m" to activate the movement in the Truck
+- *Wait and enjoy!* :D
+
+
+
+> *Disclaimer for MakeWithAda contest:*
+> All the code, images, design and videos of this contest are made by myself, except the Console library, which I made, with a friend, for the previous MakeWithAda Contest in [this project](https://www.hackster.io/endlessteam/low-cost-ecg-pathology-detection-with-deep-neural-networks-b417f1). Everything else is new creation for this contest.
+
+
 # Introduction
 
 ## The problem
