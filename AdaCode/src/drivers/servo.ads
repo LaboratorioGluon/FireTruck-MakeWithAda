@@ -48,9 +48,9 @@ package Servo is
    ----------------------------------------------------------
    -- This procedure is used to calibrate the servos when they
    -- do not work with the standard:
-   -- - 1000ms => -90 degrees
-   -- - 1500ms => 0 degrees
-   -- - 2000ms => 90 degrees
+   -- - 1000us => -90 degrees
+   -- - 1500us => 0 degrees
+   -- - 2000us => 90 degrees
    ---------------------------------------------------------- 
    procedure setCalibration(This: in out Servo;
                             Zero: in STM32.PWM.Microseconds;

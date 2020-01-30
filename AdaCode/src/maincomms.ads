@@ -77,6 +77,15 @@ package MainComms is
    -------------------------------------------------------------------
    function getLastCommand(Tag: Command_type) return Command;
    
+
+   -------------------------------------------------------------------
+   --
+   -- endCommand: Clear the newData flag in the Command so it will not
+   --     be procesed again
+   -- 
+   -- params:
+   --    - Tag: Identifier of the command 
+   -------------------------------------------------------------------
    procedure endCommand(Tag: Command_type);
 
 end MainComms;

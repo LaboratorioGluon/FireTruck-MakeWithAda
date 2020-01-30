@@ -6,25 +6,35 @@ from Detector import Detector
 
 
 webcam = cv2.VideoCapture(0)
-#webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, True)
 
+# Configure camera parameters
 webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)   
 webcam.set(cv2.CAP_PROP_EXPOSURE, -0.5) 
 
+# Create the detector
 detect = Detector()
 detect.setMode("normal")
 cycles = 0
+
+#Main loop
 while True:
 
+    # Read the frame
     check, frame = webcam.read()
     if frame is None:
         break
-    #webcam.set(cv2.CAP_PROP_AUTO_EXPOSURE, False)
         
+    # Show the captured image
     cv2.imshow("captura", frame)
     
+    # Run the main loop of the detector
+    # This will run one algortihm or another
+    # dependin on its mode
     detect.Loop(frame)
     
+    # Read the keys to change the mode,
+    # capture background, send command to the truck
+    # or quit
     key = cv2.waitKey(1)
     if key == ord('q'):
         print("Turning off camera.")

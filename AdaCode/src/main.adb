@@ -36,9 +36,9 @@ procedure Main is
    PumpPinNot : STM32.GPIO.GPIO_Point := STM32.Device.PD3;
    
    servo1 : Servo.Servo;
-   servo2 : Servo.Servo;
+   servo2 : Servo.Servo; -- vertical
    
-   servo_vertical: Servo.Servo renames servo2;
+   --servo_vertical: Servo.Servo renames servo2; 
    
 begin
    STM32.Board.Configure_User_Button_GPIO;
@@ -162,9 +162,6 @@ begin
                else
                   PumpPinNot.set;
                end if;
-               --              when MainComms.SET_MAIN_STATUS =>
-               --                 last_command_status := Commander.CommandState(Cmd   => last_command,
-               --                                                               State => MainState.currentState);
             when MainComms.INFO_TARGET =>
                last_command_status := Commander.CommandAim(last_command,
                                                            servo1,

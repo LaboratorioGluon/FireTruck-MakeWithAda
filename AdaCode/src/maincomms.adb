@@ -8,17 +8,18 @@ package body MainComms is
       ret_command : Command;
       
    begin
---        Console.putLine("Data: ");
---        for i in 0 .. 10 loop
---           Console.put(raw_data(i)'Img & ", ");
---        end loop;
---        Console.putChar(ASCII.CR);
+      -- Generate the Command from raw data
       ret_command.Tag := Command_type'Val(raw_data(0));
       ret_command.Len := Len_type(raw_data(1));
+
+      -- Fill the Data array
       for i in 0 .. raw_data(1) loop
          ret_command.Data(Standard.Integer(i)) := raw_data(Standard.Integer(i) + 2);
       end loop;
+
+      -- Set the newData so we process this command in this loop
       ret_command.NewData := True;
+
       return ret_command;
    end parseCommand;
    
@@ -28,12 +29,20 @@ package body MainComms is
       cmd : Command;
       count : Integer := 0;
    begin
-	
+      -- Read all the data until there are no more data-packets
       while dev.newDataAvailable loop
+         -- In order to control that everything goes right
+         -- we set the RED Led
          STM32.GPIO.Set(Red_LED);
+
+         -- We already know that there is new data so this call is not really blocking
          reg := dev.ReadWaitBlocking;
          dev.getData(data, count);
+
+         -- Convert from raw to Command.
          cmd := parseCommand(data);
+
+         -- Store the command
          Last_Command_array(cmd.Tag) := cmd;
         end loop;
    end updateCommands;
@@ -41,7 +50,6 @@ package body MainComms is
    
    function getLastCommand(Tag: Command_type) return Command is
    begin
-      --Last_Command_Array(Tag).NewData := False;
       return Last_Command_Array(Tag);
    end getLastCommand;
    
